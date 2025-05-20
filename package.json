@@ -1,0 +1,27 @@
+{
+  "name": "obscuron-nodejs-core",
+  "version": "1.0.0",
+  "description": "Obscuron Web-Based Encrypted Chat App",
+  "license": "MIT",
+  "author": "dev@obscuron.chat",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "node app/index.js",
+    "dev": "nodemon app/index.js"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "body-parser": "^2.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.15.0",
+    "node-cloudflare-r2": "^0.4.2",
+    "ws": "^8.18.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
