@@ -1,0 +1,6 @@
+docker run --rm -i yousan/swagger-yaml-to-html < openapi.yaml > index.html
+awk 'NR==6{print "  <meta name=\"robots\" content=\"none\" />"}1' index.html > temp.html && mv temp.html index.html
+awk 'NR==7{print "  <meta name=\"googlebot\" content=\"none\" />"}1' index.html > temp.html && mv temp.html index.html
+sed -i '8d' index.html
+awk -v TITLE="$(sed -n '3{s/^[[:space:]]*title:[[:space:]]*//;s/[[:space:]]*$//;p;q}' openapi.yaml)" 'NR==8{print "  <title>" TITLE " - Swagger UI</title>"}1' index.html > temp.html && mv temp.html index.html
+awk -v UMAMI_ID="$(. ./.env; printf %s "$UMAMI_ID")" -v API_HOST="$(. ./.env; printf %s "$API_HOST")" 'NR==11{print "  <script defer src=\"https://stat.faizath.com/script.js\" data-website-id=\"" UMAMI_ID "\" data-domains=\"" API_HOST "\"></script>"}1' index.html > temp.html && mv temp.html index.html
