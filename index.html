@@ -1,0 +1,56 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="robots" content="none" />
+  <meta name="googlebot" content="none" />
+  <title>Obscuron Chat Core API - Swagger UI</title>
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,700|Source+Code+Pro:300,600|Titillium+Web:400,600,700" rel="stylesheet">
+  <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.43.0/swagger-ui.css" >
+  <script defer src="https://stat.faizath.com/script.js" data-website-id="0375385b-5694-43e1-9eea-748878f882ee" data-domains="api.obscuron.chat"></script>
+  <style>
+    html
+    {
+      box-sizing: border-box;
+      overflow: -moz-scrollbars-vertical;
+      overflow-y: scroll;
+    }
+    *,
+    *:before,
+    *:after
+    {
+      box-sizing: inherit;
+    }
+    body {
+      margin:0;
+      background: #fafafa;
+    }
+  </style>
+</head>
+<body>
+<div id="swagger-ui"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.43.0/swagger-ui-bundle.js"> </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/3.43.0/swagger-ui-standalone-preset.js"> </script>
+<script>
+window.onload = function() {
+  var spec = {"openapi": "3.0.0", "info": {"title": "Obscuron Chat Core API", "description": "Obscuron Chat is a web-based encrypted chat app", "version": "1.0.0"}, "servers": [{"url": "https://api.obscuron.chat", "description": "Production Server"}, {"url": "http://localhost:8080", "description": "Local Development Server"}], "paths": {"/": {"get": {"summary": "Health/root message", "description": "Returns a plain text message indicating the WebSocket server is running.", "responses": {"200": {"description": "OK", "content": {"text/plain": {"schema": {"type": "string"}}}}}}}, "/auth": {"post": {"summary": "Login or register", "description": "If a user with the provided `username` exists and the `password` matches, logs in and returns a JWT.\nOtherwise, registers a new user (saving the optional `publicKey`) and returns a JWT.\n", "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AuthRequest"}}}}, "responses": {"200": {"description": "Success (login or registration)", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AuthSuccessResponse"}}}}, "400": {"description": "Bad request or unsuccessful login", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}}}}}, "/profile": {"post": {"summary": "Update profile", "security": [{"bearerAuth": []}], "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ProfileRequest"}}}}, "responses": {"200": {"description": "Profile updated", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ProfileSuccessResponse"}}}}, "400": {"description": "Bad request", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}}, "401": {"description": "Unauthorized or invalid token", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}}}}}, "/users": {"get": {"summary": "List users", "description": "Returns all users without sensitive fields (`password`, `_id`, `__v`).", "responses": {"200": {"description": "OK", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/UsersSuccessResponse"}}}}, "400": {"description": "Bad request", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}}}}}, "/room/{id}": {"get": {"summary": "WebSocket room connection (upgrade)", "description": "Upgrades the connection to a WebSocket bound to the specified room `id`.\nThis endpoint is intended for WebSocket clients using `ws://{host}/room/{id}` or `wss://{host}/room/{id}`.\n", "parameters": [{"in": "path", "name": "id", "required": true, "schema": {"type": "string", "pattern": "^[a-zA-Z0-9_-]+$"}, "description": "Room identifier"}], "responses": {"101": {"description": "Switching Protocols (WebSocket upgrade)"}, "404": {"description": "Not Found (invalid room path)"}}}}}, "components": {"securitySchemes": {"bearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}}, "schemas": {"ApiEnvelope": {"type": "object", "properties": {"status": {"type": "string", "enum": ["success", "error"]}, "message": {"type": "string"}, "data": {"type": "object"}}, "required": ["status", "message", "data"]}, "ErrorResponse": {"allOf": [{"$ref": "#/components/schemas/ApiEnvelope"}, {"type": "object", "properties": {"status": {"type": "string", "enum": ["error"]}}, "required": ["status"]}]}, "AuthRequest": {"type": "object", "properties": {"username": {"type": "string"}, "password": {"type": "string", "format": "password"}, "publicKey": {"type": "string", "description": "Optional; stored on registration if provided"}}, "required": ["username", "password"]}, "AuthData": {"type": "object", "properties": {"username": {"type": "string"}, "token": {"type": "string", "description": "JWT bearer token"}, "profileName": {"type": "string"}}, "required": ["username", "token", "profileName"]}, "AuthSuccessResponse": {"allOf": [{"$ref": "#/components/schemas/ApiEnvelope"}, {"type": "object", "properties": {"status": {"type": "string", "enum": ["success"]}, "data": {"$ref": "#/components/schemas/AuthData"}}, "required": ["status", "data"]}]}, "ProfileRequest": {"type": "object", "properties": {"profileName": {"type": "string"}, "imageURL": {"type": "string", "format": "uri"}}, "required": ["profileName"]}, "UserDocument": {"type": "object", "description": "User document returned by profile update (as saved by MongoDB)", "properties": {"_id": {"type": "string"}, "username": {"type": "string"}, "password": {"type": "string", "description": "Hashed password"}, "profileName": {"type": "string"}, "imageURL": {"type": "string", "format": "uri"}, "publicKey": {"type": "string"}, "__v": {"type": "integer"}}, "required": ["username", "password", "profileName", "imageURL", "publicKey"]}, "ProfileSuccessResponse": {"allOf": [{"$ref": "#/components/schemas/ApiEnvelope"}, {"type": "object", "properties": {"status": {"type": "string", "enum": ["success"]}, "data": {"$ref": "#/components/schemas/UserDocument"}}, "required": ["status", "data"]}]}, "PublicUser": {"type": "object", "description": "Public user object (without sensitive fields)", "properties": {"username": {"type": "string"}, "profileName": {"type": "string"}, "imageURL": {"type": "string", "format": "uri"}, "publicKey": {"type": "string"}}, "required": ["username", "profileName", "imageURL", "publicKey"]}, "UsersData": {"type": "object", "properties": {"users": {"type": "array", "items": {"$ref": "#/components/schemas/PublicUser"}}}, "required": ["users"]}, "UsersSuccessResponse": {"allOf": [{"$ref": "#/components/schemas/ApiEnvelope"}, {"type": "object", "properties": {"status": {"type": "string", "enum": ["success"]}, "data": {"$ref": "#/components/schemas/UsersData"}}, "required": ["status", "data"]}]}}}};
+  // Build a system
+  const ui = SwaggerUIBundle({
+    spec: spec,
+    dom_id: '#swagger-ui',
+    deepLinking: true,
+    presets: [
+      SwaggerUIBundle.presets.apis,
+      SwaggerUIStandalonePreset
+    ],
+    plugins: [
+      SwaggerUIBundle.plugins.DownloadUrl
+    ],
+    layout: "StandaloneLayout"
+  })
+  window.ui = ui
+}
+</script>
+</body>
+</html>

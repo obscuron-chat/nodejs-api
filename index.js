@@ -118,13 +118,17 @@ wss.on('connection', (ws) => {
     });
 });
 
-app.get('/', (req, res) => {
-    res.send(`WebSocket server is running. Connect to ${process.env.HOST}:${process.env.PORT}/room/:id`);
-});
+// app.get('/', (req, res) => {
+//     res.send(`WebSocket server is running. Connect to ${process.env.HOST}:${process.env.PORT}/room/:id`);
+// });
+
+const root = __dirname;
+app.get('/', (req, res) => 
+    res.sendFile(path.join(root, 'index.html'))
+);
 
 const bcrypt = require('bcrypt');
 const jwt = require("jsonwebtoken");
-const { profile } = require('console');
 const signToken = (user, expire=process.env.JWT_DEFAULT_EXPIRE) => {
     return jwt.sign(
         user,
