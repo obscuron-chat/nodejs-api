@@ -14,7 +14,7 @@ async function main() {
     await initializeDatabase();
     const repository = createMongoRepository(mongo);
     const authService = createAuthService({ config, repository });
-    const { server } = createServer({ config, mongo, authService, dbState: { indexesReady: true } });
+    const { server } = createServer({ config, mongo, authService, repository, dbState: { indexesReady: true } });
 
     server.listen(config.port, () => {
       console.log(`api.started port=${config.port} env=${config.nodeEnv}`);

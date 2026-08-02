@@ -44,8 +44,7 @@ function storedEnvelope(message) {
     sentAt: source.sentAt instanceof Date ? source.sentAt.toISOString() : source.sentAt,
     serverReceivedAt: source.serverReceivedAt instanceof Date ? source.serverReceivedAt.toISOString() : source.serverReceivedAt,
     deliveredAt: source.deliveredAt instanceof Date ? source.deliveredAt.toISOString() : source.deliveredAt,
-    deliveryState: source.deliveryState,
-    expiresAt: source.expiresAt instanceof Date ? source.expiresAt.toISOString() : source.expiresAt
+    deliveryState: source.deliveryState
   };
 }
 

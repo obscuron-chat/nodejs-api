@@ -81,25 +81,67 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /room/{id}:
+  /messages/{peer}:
     get:
-      summary: WebSocket room connection (upgrade)
-      description: |
-        Upgrades the connection to a WebSocket bound to the specified room `id`.
-        This endpoint is intended for WebSocket clients using `ws://{host}/room/{id}` or `wss://{host}/room/{id}`.
+      summary: Fetch encrypted conversation history
+      security:
+        - bearerAuth: []
       parameters:
         - in: path
-          name: id
+          name: peer
           required: true
           schema:
             type: string
-            pattern: '^[a-zA-Z0-9_-]+$'
-          description: Room identifier
+            pattern: '^[a-z0-9_]{3,32}$'
+          description: Peer username; must not be the authenticated user.
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          description: Maximum number of encrypted messages to return.
+        - in: query
+          name: cursor
+          schema:
+            type: string
+          description: Opaque pagination cursor from the previous response.
+      responses:
+        '200':
+          description: Encrypted message history in descending server-received order.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Invalid peer, limit, or cursor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Peer not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /ws:
+    get:
+      summary: Authenticated realtime encrypted-message WebSocket
+      description: |
+        Upgrades only exact `/ws` requests from configured origins. The first client frame must be `authenticate`; query-string credentials and non-`/ws` paths are rejected.
       responses:
         '101':
           description: Switching Protocols (WebSocket upgrade)
-        '404':
-          description: Not Found (invalid room path)
+        '403':
+          description: Forbidden upgrade origin or path
 components:
   securitySchemes:
     bearerAuth:

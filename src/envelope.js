@@ -6,6 +6,8 @@ const ERROR_MESSAGES = {
   FORBIDDEN: 'Permission denied.',
   NOT_FOUND: 'Resource not found.',
   CONFLICT: 'Request conflicts with existing state.',
+  CURSOR_EXPIRED: 'Cursor expired.',
+  MESSAGE_ID_CONFLICT: 'Message id conflicts with existing state.',
   RATE_LIMITED: 'Too many requests.',
   INTERNAL_ERROR: 'Internal server error.',
   UNSUPPORTED_MEDIA_TYPE: 'Unsupported media type.'

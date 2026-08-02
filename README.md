@@ -49,10 +49,11 @@ docker-compose up
 ```
 
 Access endpoints:
-- **WebSocket**: Connect to `ws://localhost:3000/room/:id` for chat
+- **WebSocket**: Connect to `ws://localhost:3000/ws` and authenticate with an access-token frame.
 - **HTTP API**:
   - `POST /auth` - Authentication/Registration
   - `POST /profile` - Update profile
+  - `GET /messages/:peer` - Fetch encrypted conversation history
   - `GET /users` - List all users
 
 ## 🗂️ Project Structure

@@ -76,7 +76,6 @@ test('encrypted_messages model defines required named indexes and serializer exc
     'sentAt',
     'serverReceivedAt',
     'deliveredAt',
-    'deliveryState',
-    'expiresAt'
+    'deliveryState'
   ]);
 });

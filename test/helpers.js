@@ -54,11 +54,18 @@ function fakeMongo({ ready = true, ping = true } = {}) {
 
 async function withServer(app, fn) {
   const server = http.createServer(app);
+  return withHttpServer(server, fn);
+}
+
+async function withHttpServer(server, fn) {
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const { port } = server.address();
   try {
     return await fn(`http://127.0.0.1:${port}`);
   } finally {
+    if (server.wss) {
+      for (const client of server.wss.clients) client.terminate();
+    }
     await new Promise((resolve) => server.close(resolve));
   }
 }
@@ -67,8 +74,13 @@ module.exports = {
   createFakeRepository,
   fakeMongo,
   validEnv,
+  withHttpServer,
   withServer
 };
+
+function clone(value) {
+  return value ? JSON.parse(JSON.stringify(value)) : value;
+}
 
 function createFakeRepository() {
   const state = {
@@ -77,10 +89,6 @@ function createFakeRepository() {
     messages: []
   };
   let nextUserId = 1;
-
-  function clone(value) {
-    return value ? JSON.parse(JSON.stringify(value)) : value;
-  }
 
   function publicCloneUser(user) {
     return clone(user);
@@ -150,8 +158,161 @@ function createFakeRepository() {
       for (const session of state.sessions.values()) {
         if (session.tokenFamilyId === tokenFamilyId && !session.revokedAt) session.revokedAt = now.toISOString();
       }
+    },
+
+    async storeEncryptedMessage(envelope, { now, expiresAt }) {
+      const stored = storedMessage(envelope, now, expiresAt);
+      const existing = state.messages.find((message) => message.messageId === stored.messageId);
+      if (existing) {
+        return sameEnvelope(existing, envelope)
+          ? { status: 'stored', message: originalAckMessage(existing), duplicate: true }
+          : { status: 'conflict', message: publicMessage(existing), duplicate: false };
+      }
+      state.messages.push(stored);
+      state.messages.sort(compareMessages);
+      return { status: 'stored', message: publicMessage(stored), duplicate: false };
+    },
+
+    async markMessageDelivered(username, messageId, now) {
+      const message = state.messages.find((stored) => stored.messageId === messageId && stored.receiver === username);
+      if (!message) return null;
+      if (message.deliveryState === 'stored') {
+        message.deliveredAt = now.toISOString();
+        message.deliveryState = 'delivered';
+      }
+      return publicMessage(message);
+    },
+
+    async listMessagesForParticipant(username, peer, { limit, cursor, now, order = 'desc' } = {}) {
+      return state.messages
+        .filter((message) => (
+          (message.sender === username && message.receiver === peer)
+          || (message.sender === peer && message.receiver === username)
+        ))
+        .filter((message) => new Date(message.expiresAt) > now)
+        .filter((message) => afterCursor(message, cursor, order))
+        .sort(order === 'desc' ? compareMessagesDesc : compareMessages)
+        .slice(0, limit)
+        .map(publicMessage);
+    },
+
+    async listUndeliveredMessages(username, { limit, cursor, now, order = 'asc' } = {}) {
+      return state.messages
+        .filter((message) => message.receiver === username)
+        .filter((message) => new Date(message.expiresAt) > now)
+        .filter((message) => afterCursor(message, cursor, order))
+        .sort(order === 'desc' ? compareMessagesDesc : compareMessages)
+        .slice(0, limit)
+        .map(publicMessage);
+    },
+
+    async listDeliveryReceiptsForSender(username, { limit, cursor, now, order = 'asc' } = {}) {
+      return state.messages
+        .filter((message) => message.sender === username && message.deliveryState === 'delivered' && message.deliveredAt)
+        .filter((message) => new Date(message.expiresAt) > now)
+        .filter((message) => afterDeliveryCursor(message, cursor, order))
+        .sort(order === 'desc' ? compareDeliveriesDesc : compareDeliveries)
+        .slice(0, limit)
+        .map(publicMessage);
+    },
+
+    async findReplayCursorMessage(username, cursor, now) {
+      if (cursor.event === 'high_water') return cursor.serverReceivedAt <= now ? { highWater: true } : null;
+      const message = state.messages.find((stored) => (
+        stored.messageId === cursor.messageId
+        && new Date(cursor.event === 'delivery' ? stored.deliveredAt : stored.serverReceivedAt).getTime() === cursor.serverReceivedAt.getTime()
+        && new Date(stored.expiresAt) > now
+        && (stored.sender === username || stored.receiver === username)
+      ));
+      return message ? publicMessage(message) : null;
+    },
+
+    async findHistoryCursorMessage(username, peer, cursor, now) {
+      const message = state.messages.find((stored) => (
+        stored.messageId === cursor.messageId
+        && new Date(stored.serverReceivedAt).getTime() === cursor.serverReceivedAt.getTime()
+        && new Date(stored.expiresAt) > now
+        && (
+          (stored.sender === username && stored.receiver === peer)
+          || (stored.sender === peer && stored.receiver === username)
+        )
+      ));
+      return message ? publicMessage(message) : null;
     }
   };
 
   return repository;
+}
+
+function storedMessage(envelope, now, expiresAt) {
+  return {
+    ...clone(envelope),
+    sentAt: new Date(envelope.sentAt).toISOString(),
+    serverReceivedAt: now.toISOString(),
+    deliveredAt: null,
+    deliveryState: 'stored',
+    expiresAt: expiresAt.toISOString()
+  };
+}
+
+function publicMessage(message) {
+  const { expiresAt, ...publicFields } = clone(message);
+  return publicFields;
+}
+
+function originalAckMessage(message) {
+  return { ...publicMessage(message), deliveredAt: null, deliveryState: 'stored' };
+}
+
+function sameEnvelope(existing, envelope) {
+  return [
+    'version',
+    'messageId',
+    'conversationId',
+    'sender',
+    'receiver',
+    'senderEncryptionKeyId',
+    'receiverEncryptionKeyId',
+    'senderSigningKeyId',
+    'senderPublicKeyFingerprint',
+    'hkdfSalt',
+    'nonce',
+    'ciphertext'
+  ].every((key) => existing[key] === envelope[key])
+    && existing.sentAt === new Date(envelope.sentAt).toISOString();
+}
+
+function afterCursor(message, cursor, order) {
+  if (!cursor) return true;
+  const received = new Date(message.serverReceivedAt);
+  const sentAt = new Date(message.sentAt);
+  const cursorSentAt = cursor.sentAt || new Date(0);
+  if (received.getTime() !== cursor.serverReceivedAt.getTime()) return order === 'desc' ? received < cursor.serverReceivedAt : received > cursor.serverReceivedAt;
+  if (sentAt.getTime() !== cursorSentAt.getTime()) return order === 'desc' ? sentAt < cursorSentAt : sentAt > cursorSentAt;
+  return order === 'desc' ? message.messageId < cursor.messageId : message.messageId > cursor.messageId;
+}
+
+function afterDeliveryCursor(message, cursor, order) {
+  if (!cursor) return true;
+  const deliveredAt = new Date(message.deliveredAt);
+  if (deliveredAt.getTime() !== cursor.serverReceivedAt.getTime()) return order === 'desc' ? deliveredAt < cursor.serverReceivedAt : deliveredAt > cursor.serverReceivedAt;
+  return order === 'desc' ? message.messageId < cursor.messageId : message.messageId > cursor.messageId;
+}
+
+function compareMessages(left, right) {
+  const byTime = new Date(left.serverReceivedAt) - new Date(right.serverReceivedAt);
+  const bySentAt = new Date(left.sentAt) - new Date(right.sentAt);
+  return byTime || bySentAt || left.messageId.localeCompare(right.messageId);
+}
+
+function compareMessagesDesc(left, right) {
+  return -compareMessages(left, right);
+}
+
+function compareDeliveries(left, right) {
+  return new Date(left.deliveredAt) - new Date(right.deliveredAt) || left.messageId.localeCompare(right.messageId);
+}
+
+function compareDeliveriesDesc(left, right) {
+  return -compareDeliveries(left, right);
 }

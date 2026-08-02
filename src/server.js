@@ -3,6 +3,7 @@ const http = require('node:http');
 const WebSocket = require('ws');
 const { failure, requestIdMiddleware, success } = require('./envelope');
 const { isMongoReady } = require('./db');
+const { createRealtimeService } = require('./realtime');
 const { registerAuthRoutes } = require('./routes/authRoutes');
 
 function createCorsMiddleware(config) {
@@ -31,7 +32,7 @@ function requireJsonBody(req, res, next) {
   return next();
 }
 
-function createApp({ config, mongo, wsState, dbState = { indexesReady: true }, authService = null }) {
+function createApp({ config, mongo, wsState, dbState = { indexesReady: true }, authService = null, realtimeService = null }) {
   const app = express();
   app.disable('x-powered-by');
   app.use(requestIdMiddleware);
@@ -48,7 +49,8 @@ function createApp({ config, mongo, wsState, dbState = { indexesReady: true }, a
     return failure(res, 503, 'INTERNAL_ERROR');
   });
   app.get('/', (req, res) => success(res, 200, { service: 'obscuron-api' }));
-  if (authService) registerAuthRoutes(app, { authService, config });
+  if (authService) registerAuthRoutes(app, { authService, config, realtimeService });
+  if (realtimeService) realtimeService.registerRoutes(app);
 
   app.use((req, res) => failure(res, 404, 'NOT_FOUND'));
   app.use((err, req, res, next) => {
@@ -60,15 +62,17 @@ function createApp({ config, mongo, wsState, dbState = { indexesReady: true }, a
   return app;
 }
 
-function createServer({ config, mongo, dbState = { indexesReady: true }, authService = null }) {
+function createServer({ config, mongo, dbState = { indexesReady: true }, authService = null, repository = null, realtimeOptions = {} }) {
   const wsState = { acceptingUpgrades: true };
-  const app = createApp({ config, mongo, wsState, dbState, authService });
+  const realtimeService = authService && repository ? createRealtimeService({ config, repository, authService, ...realtimeOptions }) : null;
+  const app = createApp({ config, mongo, wsState, dbState, authService, realtimeService });
   const server = http.createServer(app);
   const wss = new WebSocket.Server({
     noServer: true,
     maxPayload: config.wsMaxPayloadBytes,
     perMessageDeflate: config.wsPerMessageDeflate
   });
+  server.wss = wss;
   const allowedWsOrigins = new Set(config.wsAllowedOrigins);
 
   server.on('upgrade', (req, socket, head) => {
@@ -79,16 +83,22 @@ function createServer({ config, mongo, dbState = { indexesReady: true }, authSer
       return;
     }
     wss.handleUpgrade(req, socket, head, (ws) => {
-      ws.close(4401, 'authentication_required');
+      if (!realtimeService) return ws.close(4401, 'authentication_required');
+      wss.emit('connection', ws, req);
     });
   });
 
-  server.on('close', () => {
-    wsState.acceptingUpgrades = false;
-    wss.close();
-  });
+  if (realtimeService) wss.on('connection', realtimeService.handleConnection);
 
-  return { app, server, wss, wsState };
+  const closeHttpServer = server.close.bind(server);
+  server.close = (callback) => {
+    wsState.acceptingUpgrades = false;
+    for (const client of wss.clients) client.terminate();
+    wss.close();
+    return closeHttpServer(callback);
+  };
+
+  return { app, realtimeService, server, wss, wsState };
 }
 
 module.exports = {

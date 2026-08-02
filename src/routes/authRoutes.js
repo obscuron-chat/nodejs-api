@@ -3,7 +3,7 @@ const { failure, success } = require('../envelope');
 const { PublicError } = require('../auth');
 const { publicUser } = require('../models/user');
 
-function registerAuthRoutes(app, { authService, config }) {
+function registerAuthRoutes(app, { authService, config, realtimeService = null }) {
   app.post('/auth/register', asyncHandler(async (req, res) => {
     const result = await authService.register(req.body, requestMeta(req));
     res.setHeader('Set-Cookie', refreshCookie(config, result.refreshToken));
@@ -25,7 +25,8 @@ function registerAuthRoutes(app, { authService, config }) {
 
   app.post('/auth/logout', asyncHandler(async (req, res) => {
     const token = parseCookies(req.headers.cookie)[config.refreshCookieName];
-    await authService.logout(token);
+    const result = await authService.logout(token);
+    if (result.username && realtimeService) realtimeService.disconnectUser(result.username, 'normal_closure');
     res.setHeader('Set-Cookie', clearRefreshCookie(config));
     return res.status(204).end();
   }));

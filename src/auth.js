@@ -273,11 +273,15 @@ function createAuthService({ config, repository, clock = () => new Date(), rando
   }
 
   async function logout(rawToken) {
+    let username = null;
     if (rawToken) {
       const session = await repository.findRefreshSessionByHash(digestRefreshToken(rawToken));
-      if (session) await repository.revokeRefreshFamily(session.tokenFamilyId, clock());
+      if (session) {
+        username = session.usernameNormalized;
+        await repository.revokeRefreshFamily(session.tokenFamilyId, clock());
+      }
     }
-    return {};
+    return { username };
   }
 
   async function currentUser(authorization) {
