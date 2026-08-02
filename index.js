@@ -2,6 +2,8 @@ require('dotenv').config();
 
 const { loadConfig } = require('./src/config');
 const { connectMongo, initializeDatabase } = require('./src/db');
+const { createAuthService } = require('./src/auth');
+const { createMongoRepository } = require('./src/repositories/mongoRepository');
 const { createServer } = require('./src/server');
 const { redact } = require('./src/redaction');
 
@@ -10,7 +12,9 @@ async function main() {
     const config = loadConfig(process.env);
     const mongo = await connectMongo(config);
     await initializeDatabase();
-    const { server } = createServer({ config, mongo, dbState: { indexesReady: true } });
+    const repository = createMongoRepository(mongo);
+    const authService = createAuthService({ config, repository });
+    const { server } = createServer({ config, mongo, authService, dbState: { indexesReady: true } });
 
     server.listen(config.port, () => {
       console.log(`api.started port=${config.port} env=${config.nodeEnv}`);

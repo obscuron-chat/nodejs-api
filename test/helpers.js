@@ -64,7 +64,94 @@ async function withServer(app, fn) {
 }
 
 module.exports = {
+  createFakeRepository,
   fakeMongo,
   validEnv,
   withServer
 };
+
+function createFakeRepository() {
+  const state = {
+    users: new Map(),
+    sessions: new Map(),
+    messages: []
+  };
+  let nextUserId = 1;
+
+  function clone(value) {
+    return value ? JSON.parse(JSON.stringify(value)) : value;
+  }
+
+  function publicCloneUser(user) {
+    return clone(user);
+  }
+
+  const repository = {
+    state,
+
+    async findUserByUsername(username) {
+      return publicCloneUser(state.users.get(username));
+    },
+
+    async createUser(user) {
+      if (state.users.has(user.usernameNormalized)) {
+        const error = new Error('duplicate');
+        error.code = 'DUPLICATE_USER';
+        throw error;
+      }
+      const created = { ...clone(user), id: `user_${nextUserId++}` };
+      state.users.set(created.usernameNormalized, created);
+      return publicCloneUser(created);
+    },
+
+    async updateUserProfile(username, patch) {
+      const user = state.users.get(username);
+      if (patch.displayName !== undefined) user.displayName = patch.displayName;
+      if (patch.avatarUrl !== undefined) user.avatarUrl = patch.avatarUrl;
+      user.updatedAt = new Date().toISOString();
+      return publicCloneUser(user);
+    },
+
+    async listPublicUsersExcept(username) {
+      return [...state.users.values()].filter((user) => user.username !== username).map(publicCloneUser);
+    },
+
+    async resetIdentity(username, publicKeyBundle, now) {
+      const user = state.users.get(username);
+      user.retiredPublicKeyBundles.push(clone(user.publicKeyBundle));
+      user.publicKeyBundle = clone(publicKeyBundle);
+      user.identityVersion += 1;
+      user.identityResetAt = now.toISOString();
+      user.updatedAt = now.toISOString();
+      return publicCloneUser(user);
+    },
+
+    async createRefreshSession(session) {
+      const created = clone(session);
+      state.sessions.set(created.tokenHash, created);
+      return clone(created);
+    },
+
+    async findRefreshSessionByHash(tokenHash) {
+      return clone(state.sessions.get(tokenHash));
+    },
+
+    async rotateRefreshSession({ tokenHash, replacedByTokenHash, nextSession, now }) {
+      const current = state.sessions.get(tokenHash);
+      if (!current || current.revokedAt || current.replacedByTokenHash || new Date(current.expiresAt) <= now) return null;
+      current.replacedByTokenHash = replacedByTokenHash;
+      current.lastUsedAt = now.toISOString();
+      const next = clone(nextSession);
+      state.sessions.set(next.tokenHash, next);
+      return clone(next);
+    },
+
+    async revokeRefreshFamily(tokenFamilyId, now) {
+      for (const session of state.sessions.values()) {
+        if (session.tokenFamilyId === tokenFamilyId && !session.revokedAt) session.revokedAt = now.toISOString();
+      }
+    }
+  };
+
+  return repository;
+}

@@ -118,20 +118,15 @@ function loadConfig(env = process.env) {
   const messageRetentionDays = parseInteger(env, 'MESSAGE_RETENTION_DAYS', details, { min: 1, max: 365 });
 
   if (requireString(env, 'WS_PERMESSAGE_DEFLATE', details) !== 'false') details.push({ field: 'WS_PERMESSAGE_DEFLATE', reason: 'must be false' });
-  for (const [key, exact] of [
-    ['AUTH_USERNAME_FAIL_LIMIT', 5],
-    ['AUTH_USERNAME_WINDOW_SECONDS', 900],
-    ['AUTH_USERNAME_LOCKOUT_SECONDS', 1800],
-    ['AUTH_IP_FAIL_LIMIT', 20],
-    ['AUTH_IP_WINDOW_SECONDS', 900],
-    ['AUTH_IP_LOCKOUT_SECONDS', 900],
-    ['REFRESH_USER_LIMIT', 10],
-    ['REFRESH_IP_LIMIT', 60],
-    ['REFRESH_WINDOW_SECONDS', 600]
-  ]) {
-    parseInteger(env, key, details, { exact });
-  }
-
+  const authUsernameFailLimit = parseInteger(env, 'AUTH_USERNAME_FAIL_LIMIT', details, { exact: 5 });
+  const authUsernameWindowSeconds = parseInteger(env, 'AUTH_USERNAME_WINDOW_SECONDS', details, { exact: 900 });
+  const authUsernameLockoutSeconds = parseInteger(env, 'AUTH_USERNAME_LOCKOUT_SECONDS', details, { exact: 1800 });
+  const authIpFailLimit = parseInteger(env, 'AUTH_IP_FAIL_LIMIT', details, { exact: 20 });
+  const authIpWindowSeconds = parseInteger(env, 'AUTH_IP_WINDOW_SECONDS', details, { exact: 900 });
+  const authIpLockoutSeconds = parseInteger(env, 'AUTH_IP_LOCKOUT_SECONDS', details, { exact: 900 });
+  const refreshUserLimit = parseInteger(env, 'REFRESH_USER_LIMIT', details, { exact: 10 });
+  const refreshIpLimit = parseInteger(env, 'REFRESH_IP_LIMIT', details, { exact: 60 });
+  const refreshWindowSeconds = parseInteger(env, 'REFRESH_WINDOW_SECONDS', details, { exact: 600 });
   const logLevel = requireString(env, 'LOG_LEVEL', details);
   if (logLevel && !['info', 'warn', 'error'].includes(logLevel)) details.push({ field: 'LOG_LEVEL', reason: 'must be info, warn, or error' });
   const debug = requireString(env, 'DEBUG', details);
@@ -155,6 +150,15 @@ function loadConfig(env = process.env) {
     wsHeartbeatMissesAllowed,
     wsMaxConnectionsPerUser,
     wsMessagesPerMinute,
+    authUsernameFailLimit,
+    authUsernameWindowSeconds,
+    authUsernameLockoutSeconds,
+    authIpFailLimit,
+    authIpWindowSeconds,
+    authIpLockoutSeconds,
+    refreshUserLimit,
+    refreshIpLimit,
+    refreshWindowSeconds,
     messageRetentionDays,
     logLevel,
     debug: debug === 'true'

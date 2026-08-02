@@ -3,6 +3,7 @@ const http = require('node:http');
 const WebSocket = require('ws');
 const { failure, requestIdMiddleware, success } = require('./envelope');
 const { isMongoReady } = require('./db');
+const { registerAuthRoutes } = require('./routes/authRoutes');
 
 function createCorsMiddleware(config) {
   const allowed = new Set(config.corsAllowedOrigins);
@@ -30,7 +31,7 @@ function requireJsonBody(req, res, next) {
   return next();
 }
 
-function createApp({ config, mongo, wsState, dbState = { indexesReady: true } }) {
+function createApp({ config, mongo, wsState, dbState = { indexesReady: true }, authService = null }) {
   const app = express();
   app.disable('x-powered-by');
   app.use(requestIdMiddleware);
@@ -47,6 +48,7 @@ function createApp({ config, mongo, wsState, dbState = { indexesReady: true } })
     return failure(res, 503, 'INTERNAL_ERROR');
   });
   app.get('/', (req, res) => success(res, 200, { service: 'obscuron-api' }));
+  if (authService) registerAuthRoutes(app, { authService, config });
 
   app.use((req, res) => failure(res, 404, 'NOT_FOUND'));
   app.use((err, req, res, next) => {
@@ -58,9 +60,9 @@ function createApp({ config, mongo, wsState, dbState = { indexesReady: true } })
   return app;
 }
 
-function createServer({ config, mongo, dbState = { indexesReady: true } }) {
+function createServer({ config, mongo, dbState = { indexesReady: true }, authService = null }) {
   const wsState = { acceptingUpgrades: true };
-  const app = createApp({ config, mongo, wsState, dbState });
+  const app = createApp({ config, mongo, wsState, dbState, authService });
   const server = http.createServer(app);
   const wss = new WebSocket.Server({
     noServer: true,
