@@ -119,6 +119,7 @@ test('JCS, SHA3, key ID, fingerprint, bundle hash, and AAD vectors are stable', 
     senderSigningKeyId: vectors.encryptedMessageEnvelope.senderSigningKeyId,
     senderPublicKeyFingerprint: vectors.encryptedMessageEnvelope.senderPublicKeyFingerprint,
     hkdfSalt: vectors.encryptedMessageEnvelope.hkdfSalt,
+    nonce: vectors.encryptedMessageEnvelope.nonce,
     sentAt: vectors.encryptedMessageEnvelope.sentAt
   }));
 });
