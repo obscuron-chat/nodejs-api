@@ -1,6 +1,9 @@
 const { RefreshSession, User } = require('../models');
 
-function createMongoRepository(mongo) {
+function createMongoRepository(mongo, models = { RefreshSession, User }) {
+  const RefreshSessionModel = models.RefreshSession;
+  const UserModel = models.User;
+
   function normalizeUser(user) {
     if (!user) return null;
     const object = typeof user.toObject === 'function' ? user.toObject() : user;
@@ -9,14 +12,14 @@ function createMongoRepository(mongo) {
 
   return {
     async findUserByUsername(username, { includePasswordHash = false } = {}) {
-      let query = User.findOne({ usernameNormalized: username });
+      let query = UserModel.findOne({ usernameNormalized: username });
       if (includePasswordHash) query = query.select('+passwordHash');
       return normalizeUser(await query.lean());
     },
 
     async createUser(user) {
       try {
-        const [created] = await User.create([user]);
+        const [created] = await UserModel.create([user]);
         return normalizeUser(created);
       } catch (error) {
         if (error && error.code === 11000) {
@@ -32,15 +35,15 @@ function createMongoRepository(mongo) {
       const update = {};
       if (patch.displayName !== undefined) update.displayName = patch.displayName;
       if (patch.avatarUrl !== undefined) update.avatarUrl = patch.avatarUrl;
-      return normalizeUser(await User.findOneAndUpdate({ usernameNormalized: username }, { $set: update }, { new: true }).lean());
+      return normalizeUser(await UserModel.findOneAndUpdate({ usernameNormalized: username }, { $set: update }, { new: true }).lean());
     },
 
     async listPublicUsersExcept(username) {
-      return (await User.find({ usernameNormalized: { $ne: username } }).lean()).map(normalizeUser);
+      return (await UserModel.find({ usernameNormalized: { $ne: username } }).lean()).map(normalizeUser);
     },
 
     async resetIdentity(username, publicKeyBundle, now) {
-      return normalizeUser(await User.findOneAndUpdate(
+      return normalizeUser(await UserModel.findOneAndUpdate(
         { usernameNormalized: username },
         [
           {
@@ -63,23 +66,29 @@ function createMongoRepository(mongo) {
     },
 
     async createRefreshSession(session) {
-      const [created] = await RefreshSession.create([session]);
+      const [created] = await RefreshSessionModel.create([session]);
       return created.toObject();
     },
 
     async findRefreshSessionByHash(tokenHash) {
-      return RefreshSession.findOne({ tokenHash }).lean();
+      return RefreshSessionModel.findOne({ tokenHash }).lean();
     },
 
     async rotateRefreshSession({ tokenHash, replacedByTokenHash, nextSession, now }) {
-      const current = await RefreshSession.findOneAndUpdate(
+      const existing = await RefreshSessionModel.findOne({ tokenHash }).lean();
+      if (!existing || await hasRevokedFamilyMarker(existing.tokenFamilyId)) return null;
+      const current = await RefreshSessionModel.findOneAndUpdate(
         { tokenHash, revokedAt: null, replacedByTokenHash: null, expiresAt: { $gt: now } },
         { $set: { replacedByTokenHash, lastUsedAt: now } },
         { new: true }
       ).lean();
       if (!current) return null;
       try {
-        const [created] = await RefreshSession.create([nextSession]);
+        const [created] = await RefreshSessionModel.create([nextSession]);
+        if (await hasRevokedFamilyMarker(current.tokenFamilyId)) {
+          await this.revokeRefreshFamily(current.tokenFamilyId, now);
+          return null;
+        }
         return created.toObject();
       } catch (error) {
         await this.revokeRefreshFamily(current.tokenFamilyId, now);
@@ -88,12 +97,21 @@ function createMongoRepository(mongo) {
     },
 
     async revokeRefreshFamily(tokenFamilyId, now) {
-      await RefreshSession.updateMany(
+      await RefreshSessionModel.findOneAndUpdate(
+        { tokenFamilyId },
+        { $set: { revokedAt: now } },
+        { sort: { createdAt: 1 }, new: true }
+      ).lean();
+      await RefreshSessionModel.updateMany(
         { tokenFamilyId, revokedAt: null },
         { $set: { revokedAt: now } }
       );
     }
   };
+
+  async function hasRevokedFamilyMarker(tokenFamilyId) {
+    return Boolean(await RefreshSessionModel.findOne({ tokenFamilyId, revokedAt: { $ne: null } }).lean());
+  }
 }
 
 module.exports = {
