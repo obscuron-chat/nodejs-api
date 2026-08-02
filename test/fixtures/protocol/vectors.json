@@ -15,7 +15,7 @@
       "algorithm": "X25519-HKDF-SHA-256-AES-256-GCM",
       "publicKey": "NYBy1jZYgNGu6jKa35EhODhR7SGijjt16WXQ0s0WYlQ"
     },
-    "fingerprint": "sha3-256:cmnkxF4zPOvB5g20g8KiTHQR8RgC_l2akC1tkYjVtdc"
+    "fingerprint": "sha3-256:GYGjMOBw4PG-JqmHll77i12nnJTb1XuK_XVDOVPorUY"
   },
   "signedMessagePayload": {
     "version": 1,
@@ -29,7 +29,7 @@
       "sentAt": "2026-08-02T00:00:00.000Z"
     },
     "senderSigningKeyId": "k1_JPWyYEP-kQmA52aatoawqq",
-    "senderPublicKeyFingerprint": "sha3-256:cmnkxF4zPOvB5g20g8KiTHQR8RgC_l2akC1tkYjVtdc",
+    "senderPublicKeyFingerprint": "sha3-256:GYGjMOBw4PG-JqmHll77i12nnJTb1XuK_XVDOVPorUY",
     "signature": {
       "algorithm": "ECDSA-secp256k1-SHA3-256-lowS",
       "r": "KWTUsotY_ajyKrtWjWJm4t8CAW3q6LCh5bZMhASXznA",
@@ -45,11 +45,11 @@
     "senderEncryptionKeyId": "k1_MOFHSW1TJ1ZQahQD8f_XsO",
     "receiverEncryptionKeyId": "k1_a18FqjRu4CNAYDugDiyRR0",
     "senderSigningKeyId": "k1_JPWyYEP-kQmA52aatoawqq",
-    "senderPublicKeyFingerprint": "sha3-256:cmnkxF4zPOvB5g20g8KiTHQR8RgC_l2akC1tkYjVtdc",
+    "senderPublicKeyFingerprint": "sha3-256:GYGjMOBw4PG-JqmHll77i12nnJTb1XuK_XVDOVPorUY",
     "hkdfSalt": "YGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn8",
     "sentAt": "2026-08-02T00:00:00.000Z",
     "nonce": "gIGCg4SFhoeIiYqL",
-    "ciphertext": "g3AOP8jr68nP3VlfOyogq0fIkFlNUV0ofi-n_iv6sXUNOxXE2Uck8f1yFBA0GG-VKMZYXJDCX9SX0_XU4dJA3MwWD0tQEvw77798iZyjJvYDQ1xsjs28eXodMcgfJu0mdNu5D65EAEGYQAaIoYrIPB9DOcMlONIjLB3JzpxPQQ67vWbEMDOjon_hyXcXvL6xprXN7hZX5ECqJjPUrn3uaoTtbrtHYSz0GWYs9IR6QAo-mfiav5zR_JQfj2Mk9BXh8pHQ-kb2Gn738ICR0j4Sl62TctCxq7S49oKdAy1ZGmDEtDp-TZDmLxfNCKwhM78wlF6VaIAd9YgSvVuLobr0ZZjIM_bjEL8XJ579_WAqPuhiV93qPXQxZXojv1NeqA54lyNGixyFzB0FwDoVNUXd2KKb1FZk-J-bIRW4tfDjz-4EIUIy-f0hA99l-zF4CbDgZIohzKD-YuWZM-lnFJRhAa7lF6x51BEbM-A9JsB60E3iUYRqJuh77nlYOmZK2-f9_Gir7WUE-WVNq9G1CcsDB--7m7DfgGYkFTsqNbC74Lq_dwAtwgut7LhbemAWfyriNTHZoN7yjoHgTp1mSsHa4lFUa7LRVZGWXnfciIM-ygvtBeZU6qaR0wwT1XWVoHTRFD1A1QtvYe7c8-wdAS_CfuOeutPIRqgi2IHdYUv3xaC9chABZeZVSUZ96jWJyk2p8myiiPAlMGv7i6c-pGMXiQx4gi17z1PQ6FnX29IKFzlWWHD5zaS9kq8S9sG5ZVd3nDlOnEL6FVa1G3-o_bjXURthdWhKz6NigIpWTg"
+    "ciphertext": "g3AOP8jr68nP3VlfOyogq0fIkFlNUV0ofi-n_iv6sXUNOxXE2Uck8dlGPREBERmYTNlpM-_UAKych4mK3Ksj4JoOPGo-JrsR26QbubisHM8FcmZsjs28eXodMcgfJu0mdNu5D65EAEGYQAaIoYrIPB9DOcMlONIjLB3JzpxPQQ67vWbEMDOjon_hyXcXvL6xprXN7hZX5ECqJjPUrn3uaoTtbrtHYSz0GWYs9IR6QAo-mfiav5zR_JQfj2Mk9BXh8pHQ-kb2Gn738ICR0j4Sl62TctCxq7S49oKdAy1ZGmDEtDp-TZDmLxfNCKwhM78wlF6VaIAd9YgSvVuLobr0ZZjIM_bjEL8XJ579_WAqPuhiV93qPXQxZXojv1NeqA54lyNGixyFzB0FwDoVNUXd2KKb1FZk-J-bIRW4tfDjz-4EIUIy-f0hA99l-zF4CbDgZIohzKD-YuWZM-lnFJRhAa7lF6x51BEbM-A9JsB60E3iUYRqJuh77nlYOmZK2-f9_Gir7WUE-WVNq9G1CcsDB--7m7DfgGYkFTsqNbC74Lq_dwAtwgut7LhbemAWfyriNTHZoN7yjoHgTp1mSsHa4lFUa7LRVZGWXnfciIM-ygvtBeZU6qaR0wwT1XWVoHTRFD1A1QtvYe7c8-wdAS_CfuOeutPIRqgi2IHdYUv3xaC9chABZeZVSUZ96jWJyk2p8myiiPAlMGv7i6c-pGMXiQx4gi17z1PQ6FnX29IKFzlWWHD5zaS9kq8S9sG5ZVd3nDlOnEL6FVa1G3-orqs94E3oSsdFsLwCbHnQEg"
   },
   "encryptedKeyBundle": {
     "version": 1,
@@ -70,9 +70,9 @@
         "algorithm": "X25519-HKDF-SHA-256-AES-256-GCM",
         "publicKey": "NYBy1jZYgNGu6jKa35EhODhR7SGijjt16WXQ0s0WYlQ"
       },
-      "fingerprint": "sha3-256:cmnkxF4zPOvB5g20g8KiTHQR8RgC_l2akC1tkYjVtdc"
+      "fingerprint": "sha3-256:GYGjMOBw4PG-JqmHll77i12nnJTb1XuK_XVDOVPorUY"
     },
-    "publicKeyFingerprint": "sha3-256:cmnkxF4zPOvB5g20g8KiTHQR8RgC_l2akC1tkYjVtdc",
+    "publicKeyFingerprint": "sha3-256:GYGjMOBw4PG-JqmHll77i12nnJTb1XuK_XVDOVPorUY",
     "kdf": {
       "name": "PBKDF2",
       "hash": "HMAC-SHA-256",
@@ -81,8 +81,8 @@
     },
     "cipher": "AES-256-GCM",
     "nonce": "oKGio6Slpqeoqaqr",
-    "ciphertext": "fv_KHWG1afm1uEsnSE2cqO4lkLYpPLMGL-RdTQye5QxMxhcbJr2EJZtBN17r1PTqqLo1kDCn96SfLN-X_dEnTMFsB2RPaihyNLq1iXZjl1O5hD4EYUCdt-NVM1ewbLBrOaZtXtkJAudBCj-eEYvVEHk_Q2uPIEkSPrrQHtJUQc5xJrIUg48OTBLreXaRnyPEaMs8gMg2k5ZnEgcTMsgjz6iK9TALwItN0K3yvLUzPbx0HWXkJOpEpyNZ_GaU8wlMJQ9lWVtyjCzh6Qo4HQDjY3NC_5JPGINAuuC66QE1B3R7OLQllZr-5Y0OVIyoXOGBJNdAcRMG8IdVJJ1L-ve_IlH7WkPUPJi2nIdvFF2DscDF9Xr0bB3y1w6Vfr9Jyf3wQ0cSCgaDfBHA_jiicGuKIOM_2sSBpHXF_LLYJbpzyuSjHNkruWjGQjJy80tFvantLLBRUQqyT4apR5O6-jHK",
-    "bundleHash": "sha3-256:94w4swAm8xpBYqc-7jJUmT52aeMR3GFgdn8kHag51vw"
+    "ciphertext": "fv_KHWG1afm1uEsnSE2cqO4lkLYpPLMGL-RdTQye5QxMxhcbJr2EJZtBN17r1PTqqLo1kDCn96SfLN-X_dEnTMFsB2RPaihyNLq1iXZjl1O5hD4EYUCdt-NVM1ewbLBrOaZtXtkJAudBCj-eEYvVEHk_Q2uPIEkSPrrQHtJUQc5xJrIUg48OTBLreXaRnyPEaMs8gMg2k5ZnEgcTMsgjz6iK9TALwItN0K3yvLUzPbx0HWXkJOpEpyNZ_GaU8wlMJQ9lWVtyjCzh6Qo4HQDjY3NC_5JPGINAuuC66QE1B3R7OLQllZr-5Y0OVIyoXOGBJNdAcRMG8IdVJJ1L-ve_IlH7WkPUPJi2nIdvFF2DscDF9Xr0bB3y1w6Vfr9Jyf3wQ0cSCgaDfBHA_jiicGuKIOM_2sSBpHXF_LLYJbpzyuSjHNkruWjGQjJy80tFvamsFkYD-rR8_WZfJzyUJrbJ",
+    "bundleHash": "sha3-256:cOo0lAKTwEqnVplw6JMmGVSrJSe4wQQ2FaVPcRuTdKk"
   },
   "privateKeyPlaintext": {
     "version": 1,
@@ -139,7 +139,7 @@
       "signingKeyId": "k1_JPWyYEP-kQmA52aatoawqq",
       "senderEncryptionKeyId": "k1_MOFHSW1TJ1ZQahQD8f_XsO",
       "receiverEncryptionKeyId": "k1_a18FqjRu4CNAYDugDiyRR0",
-      "publicKeyFingerprint": "sha3-256:cmnkxF4zPOvB5g20g8KiTHQR8RgC_l2akC1tkYjVtdc"
+      "publicKeyFingerprint": "sha3-256:GYGjMOBw4PG-JqmHll77i12nnJTb1XuK_XVDOVPorUY"
     },
     "signature": {
       "digest": "Sn6zQ5csseOjCDbjUTRy3TIEojvnX7a9icJ5Ej9cFGg",
@@ -153,9 +153,9 @@
       "hkdfInfo": "Obscuron conversation message v1",
       "hkdfSalt": "YGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn8",
       "aesGcmKey": "Ql_-nkjj174Elf7qbtagX4IFrKmQhnMJs5uHr2pj0xE",
-      "aadCanonical": "{\"conversationId\":\"conv_7Z4b2qN8pL5mR1xS9vA0cD\",\"hkdfSalt\":\"YGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn8\",\"messageId\":\"msg_01j5w7m6h2x8p4n9q0r1s2t3u4\",\"nonce\":\"gIGCg4SFhoeIiYqL\",\"receiver\":\"bob\",\"receiverEncryptionKeyId\":\"k1_a18FqjRu4CNAYDugDiyRR0\",\"sender\":\"alice\",\"senderEncryptionKeyId\":\"k1_MOFHSW1TJ1ZQahQD8f_XsO\",\"senderPublicKeyFingerprint\":\"sha3-256:cmnkxF4zPOvB5g20g8KiTHQR8RgC_l2akC1tkYjVtdc\",\"senderSigningKeyId\":\"k1_JPWyYEP-kQmA52aatoawqq\",\"sentAt\":\"2026-08-02T00:00:00.000Z\",\"version\":1}",
+      "aadCanonical": "{\"conversationId\":\"conv_7Z4b2qN8pL5mR1xS9vA0cD\",\"hkdfSalt\":\"YGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn8\",\"messageId\":\"msg_01j5w7m6h2x8p4n9q0r1s2t3u4\",\"nonce\":\"gIGCg4SFhoeIiYqL\",\"receiver\":\"bob\",\"receiverEncryptionKeyId\":\"k1_a18FqjRu4CNAYDugDiyRR0\",\"sender\":\"alice\",\"senderEncryptionKeyId\":\"k1_MOFHSW1TJ1ZQahQD8f_XsO\",\"senderPublicKeyFingerprint\":\"sha3-256:GYGjMOBw4PG-JqmHll77i12nnJTb1XuK_XVDOVPorUY\",\"senderSigningKeyId\":\"k1_JPWyYEP-kQmA52aatoawqq\",\"sentAt\":\"2026-08-02T00:00:00.000Z\",\"version\":1}",
       "nonce": "gIGCg4SFhoeIiYqL",
-      "ciphertextWithTag": "g3AOP8jr68nP3VlfOyogq0fIkFlNUV0ofi-n_iv6sXUNOxXE2Uck8f1yFBA0GG-VKMZYXJDCX9SX0_XU4dJA3MwWD0tQEvw77798iZyjJvYDQ1xsjs28eXodMcgfJu0mdNu5D65EAEGYQAaIoYrIPB9DOcMlONIjLB3JzpxPQQ67vWbEMDOjon_hyXcXvL6xprXN7hZX5ECqJjPUrn3uaoTtbrtHYSz0GWYs9IR6QAo-mfiav5zR_JQfj2Mk9BXh8pHQ-kb2Gn738ICR0j4Sl62TctCxq7S49oKdAy1ZGmDEtDp-TZDmLxfNCKwhM78wlF6VaIAd9YgSvVuLobr0ZZjIM_bjEL8XJ579_WAqPuhiV93qPXQxZXojv1NeqA54lyNGixyFzB0FwDoVNUXd2KKb1FZk-J-bIRW4tfDjz-4EIUIy-f0hA99l-zF4CbDgZIohzKD-YuWZM-lnFJRhAa7lF6x51BEbM-A9JsB60E3iUYRqJuh77nlYOmZK2-f9_Gir7WUE-WVNq9G1CcsDB--7m7DfgGYkFTsqNbC74Lq_dwAtwgut7LhbemAWfyriNTHZoN7yjoHgTp1mSsHa4lFUa7LRVZGWXnfciIM-ygvtBeZU6qaR0wwT1XWVoHTRFD1A1QtvYe7c8-wdAS_CfuOeutPIRqgi2IHdYUv3xaC9chABZeZVSUZ96jWJyk2p8myiiPAlMGv7i6c-pGMXiQx4gi17z1PQ6FnX29IKFzlWWHD5zaS9kq8S9sG5ZVd3nDlOnEL6FVa1G3-o_bjXURthdWhKz6NigIpWTg",
+      "ciphertextWithTag": "g3AOP8jr68nP3VlfOyogq0fIkFlNUV0ofi-n_iv6sXUNOxXE2Uck8dlGPREBERmYTNlpM-_UAKych4mK3Ksj4JoOPGo-JrsR26QbubisHM8FcmZsjs28eXodMcgfJu0mdNu5D65EAEGYQAaIoYrIPB9DOcMlONIjLB3JzpxPQQ67vWbEMDOjon_hyXcXvL6xprXN7hZX5ECqJjPUrn3uaoTtbrtHYSz0GWYs9IR6QAo-mfiav5zR_JQfj2Mk9BXh8pHQ-kb2Gn738ICR0j4Sl62TctCxq7S49oKdAy1ZGmDEtDp-TZDmLxfNCKwhM78wlF6VaIAd9YgSvVuLobr0ZZjIM_bjEL8XJ579_WAqPuhiV93qPXQxZXojv1NeqA54lyNGixyFzB0FwDoVNUXd2KKb1FZk-J-bIRW4tfDjz-4EIUIy-f0hA99l-zF4CbDgZIohzKD-YuWZM-lnFJRhAa7lF6x51BEbM-A9JsB60E3iUYRqJuh77nlYOmZK2-f9_Gir7WUE-WVNq9G1CcsDB--7m7DfgGYkFTsqNbC74Lq_dwAtwgut7LhbemAWfyriNTHZoN7yjoHgTp1mSsHa4lFUa7LRVZGWXnfciIM-ygvtBeZU6qaR0wwT1XWVoHTRFD1A1QtvYe7c8-wdAS_CfuOeutPIRqgi2IHdYUv3xaC9chABZeZVSUZ96jWJyk2p8myiiPAlMGv7i6c-pGMXiQx4gi17z1PQ6FnX29IKFzlWWHD5zaS9kq8S9sG5ZVd3nDlOnEL6FVa1G3-orqs94E3oSsdFsLwCbHnQEg",
       "tamperedAadFields": [
         "conversationId",
         "sender",
@@ -170,9 +170,9 @@
     },
     "vault": {
       "passphrase": "correct horse battery staple",
-      "aadCanonical": "{\"cipher\":\"AES-256-GCM\",\"context\":\"local-vault\",\"createdAt\":\"2026-08-02T00:00:00.000Z\",\"kdf\":{\"hash\":\"HMAC-SHA-256\",\"iterations\":600000,\"name\":\"PBKDF2\",\"salt\":\"kJGSk5SVlpeYmZqbnJ2enw\"},\"publicKeyBundle\":{\"createdAt\":\"2026-08-02T00:00:00.000Z\",\"encryptionKey\":{\"algorithm\":\"X25519-HKDF-SHA-256-AES-256-GCM\",\"keyId\":\"k1_MOFHSW1TJ1ZQahQD8f_XsO\",\"publicKey\":\"NYBy1jZYgNGu6jKa35EhODhR7SGijjt16WXQ0s0WYlQ\"},\"fingerprint\":\"sha3-256:cmnkxF4zPOvB5g20g8KiTHQR8RgC_l2akC1tkYjVtdc\",\"signingKey\":{\"algorithm\":\"ECDSA-secp256k1-SHA3-256\",\"keyId\":\"k1_JPWyYEP-kQmA52aatoawqq\",\"publicKey\":\"A21sqsJIr5b2r6f5BPVQJToPPvP1qi_mg4qVshZpFGji\"},\"userId\":\"alice\",\"version\":1},\"publicKeyFingerprint\":\"sha3-256:cmnkxF4zPOvB5g20g8KiTHQR8RgC_l2akC1tkYjVtdc\",\"userId\":\"alice\",\"version\":1}",
+      "aadCanonical": "{\"cipher\":\"AES-256-GCM\",\"context\":\"local-vault\",\"createdAt\":\"2026-08-02T00:00:00.000Z\",\"kdf\":{\"hash\":\"HMAC-SHA-256\",\"iterations\":600000,\"name\":\"PBKDF2\",\"salt\":\"kJGSk5SVlpeYmZqbnJ2enw\"},\"publicKeyBundle\":{\"createdAt\":\"2026-08-02T00:00:00.000Z\",\"encryptionKey\":{\"algorithm\":\"X25519-HKDF-SHA-256-AES-256-GCM\",\"keyId\":\"k1_MOFHSW1TJ1ZQahQD8f_XsO\",\"publicKey\":\"NYBy1jZYgNGu6jKa35EhODhR7SGijjt16WXQ0s0WYlQ\"},\"fingerprint\":\"sha3-256:GYGjMOBw4PG-JqmHll77i12nnJTb1XuK_XVDOVPorUY\",\"signingKey\":{\"algorithm\":\"ECDSA-secp256k1-SHA3-256\",\"keyId\":\"k1_JPWyYEP-kQmA52aatoawqq\",\"publicKey\":\"A21sqsJIr5b2r6f5BPVQJToPPvP1qi_mg4qVshZpFGji\"},\"userId\":\"alice\",\"version\":1},\"publicKeyFingerprint\":\"sha3-256:GYGjMOBw4PG-JqmHll77i12nnJTb1XuK_XVDOVPorUY\",\"userId\":\"alice\",\"version\":1}",
       "privatePlaintextCanonical": "{\"encryptionPrivateKey\":{\"algorithm\":\"X25519-HKDF-SHA-256-AES-256-GCM\",\"keyId\":\"k1_MOFHSW1TJ1ZQahQD8f_XsO\",\"privateKey\":\"ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8\"},\"signingPrivateKey\":{\"algorithm\":\"ECDSA-secp256k1-SHA3-256\",\"keyId\":\"k1_JPWyYEP-kQmA52aatoawqq\",\"privateKey\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\"},\"version\":1}",
-      "bundleHash": "sha3-256:94w4swAm8xpBYqc-7jJUmT52aeMR3GFgdn8kHag51vw"
+      "bundleHash": "sha3-256:cOo0lAKTwEqnVplw6JMmGVSrJSe4wQQ2FaVPcRuTdKk"
     }
   }
 }
