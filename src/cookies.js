@@ -6,7 +6,12 @@ function parseCookies(header) {
     if (index === -1) continue;
     const key = pair.slice(0, index).trim();
     const value = pair.slice(index + 1).trim();
-    if (key) cookies[key] = decodeURIComponent(value);
+    if (!key) continue;
+    try {
+      cookies[key] = decodeURIComponent(value);
+    } catch {
+      cookies[key] = undefined;
+    }
   }
   return cookies;
 }

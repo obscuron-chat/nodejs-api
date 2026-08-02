@@ -40,18 +40,24 @@ function createMongoRepository(mongo) {
     },
 
     async resetIdentity(username, publicKeyBundle, now) {
-      const user = await User.findOne({ usernameNormalized: username }).lean();
-      if (!user) return null;
       return normalizeUser(await User.findOneAndUpdate(
         { usernameNormalized: username },
-        {
-          $set: {
-            publicKeyBundle,
-            identityVersion: user.identityVersion + 1,
-            identityResetAt: now
-          },
-          $push: { retiredPublicKeyBundles: user.publicKeyBundle }
-        },
+        [
+          {
+            $set: {
+              retiredPublicKeyBundles: {
+                $concatArrays: [
+                  { $ifNull: ['$retiredPublicKeyBundles', []] },
+                  ['$publicKeyBundle']
+                ]
+              },
+              publicKeyBundle,
+              identityVersion: { $add: ['$identityVersion', 1] },
+              identityResetAt: now,
+              updatedAt: now
+            }
+          }
+        ],
         { new: true }
       ).lean());
     },
@@ -66,16 +72,19 @@ function createMongoRepository(mongo) {
     },
 
     async rotateRefreshSession({ tokenHash, replacedByTokenHash, nextSession, now }) {
-      return mongo.connection.transaction(async (session) => {
-        const current = await RefreshSession.findOneAndUpdate(
-          { tokenHash, revokedAt: null, replacedByTokenHash: null, expiresAt: { $gt: now } },
-          { $set: { replacedByTokenHash, lastUsedAt: now } },
-          { new: true, session }
-        ).lean();
-        if (!current) return null;
-        const [created] = await RefreshSession.create([nextSession], { session });
+      const current = await RefreshSession.findOneAndUpdate(
+        { tokenHash, revokedAt: null, replacedByTokenHash: null, expiresAt: { $gt: now } },
+        { $set: { replacedByTokenHash, lastUsedAt: now } },
+        { new: true }
+      ).lean();
+      if (!current) return null;
+      try {
+        const [created] = await RefreshSession.create([nextSession]);
         return created.toObject();
-      });
+      } catch (error) {
+        await this.revokeRefreshFamily(current.tokenFamilyId, now);
+        throw error;
+      }
     },
 
     async revokeRefreshFamily(tokenFamilyId, now) {

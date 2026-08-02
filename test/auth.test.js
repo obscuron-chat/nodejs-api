@@ -3,7 +3,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const test = require('node:test');
 const vectors = require('./fixtures/protocol/vectors.json');
-const { createAuthService } = require('../src/auth');
+const { DUMMY_PASSWORD_HASH, createAuthService } = require('../src/auth');
 const { loadConfig } = require('../src/config');
 const { createApp } = require('../src/server');
 const { createFakeRepository, fakeMongo, validEnv, withServer } = require('./helpers');
@@ -93,7 +93,34 @@ test('register rejects duplicate usernames, mismatched bundle users, and encrypt
 
     const vault = await fetch(`${baseUrl}/auth/register`, jsonRequest('POST', { ...registerBody('carol'), encryptedKeyBundle: vectors.encryptedKeyBundle }));
     assert.equal(vault.status, 400);
+
+    const missingDisplayName = await fetch(`${baseUrl}/auth/register`, jsonRequest('POST', { ...registerBody('dave'), displayName: undefined }));
+    assert.equal(missingDisplayName.status, 400);
+    const missingBody = await missingDisplayName.json();
+    assert.equal(missingBody.error.code, 'VALIDATION_FAILED');
+    assert.ok(missingBody.error.details.some((detail) => detail.field === 'displayName'));
   });
+});
+
+test('unknown-user login still performs a cost-12 dummy bcrypt compare', async () => {
+  const { authService } = makeHarness();
+  const originalCompare = bcrypt.compare;
+  const calls = [];
+  bcrypt.compare = async (password, hash) => {
+    calls.push({ password, hash });
+    return originalCompare(password, hash);
+  };
+  try {
+    await assert.rejects(
+      () => authService.login({ username: 'nobody', password: 'wrong password!' }, { ip: '203.0.113.10' }),
+      { status: 401, code: 'UNAUTHENTICATED' }
+    );
+  } finally {
+    bcrypt.compare = originalCompare;
+  }
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].hash, DUMMY_PASSWORD_HASH);
+  assert.equal(Number(calls[0].hash.split('$')[2]), 12);
 });
 
 test('login uses generic failures and username rate limit while successful login issues a fresh refresh cookie', async () => {
@@ -140,6 +167,16 @@ test('refresh rotates tokens and old token reuse revokes the whole token family'
 
     const revokedCurrent = await fetch(`${baseUrl}/auth/refresh`, jsonRequest('POST', {}, { Cookie: secondCookie }));
     assert.equal(revokedCurrent.status, 401);
+  });
+});
+
+test('malformed percent-encoded refresh cookie returns 401 instead of a server error', async () => {
+  const { app, config } = makeHarness();
+  await withServer(app, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/auth/refresh`, jsonRequest('POST', {}, { Cookie: `${config.refreshCookieName}=%E0%A4%A` }));
+    const body = await response.json();
+    assert.equal(response.status, 401);
+    assert.equal(body.error.code, 'UNAUTHENTICATED');
   });
 });
 
@@ -196,6 +233,9 @@ test('protected profile, users, and me endpoints serialize public fields and rej
 
     const unknown = await fetch(`${baseUrl}/me/profile`, jsonRequest('PATCH', { displayName: 'Alice 2', role: 'admin' }, { Authorization: `Bearer ${aliceToken}` }));
     assert.equal(unknown.status, 400);
+    const empty = await fetch(`${baseUrl}/me/profile`, jsonRequest('PATCH', {}, { Authorization: `Bearer ${aliceToken}` }));
+    assert.equal(empty.status, 400);
+    assert.ok((await empty.json()).error.details.some((detail) => detail.field === 'body'));
     const unsafeAvatar = await fetch(`${baseUrl}/me/profile`, jsonRequest('PATCH', { avatarUrl: 'http://example.com/a.png' }, { Authorization: `Bearer ${aliceToken}` }));
     assert.equal(unsafeAvatar.status, 400);
     const updated = await fetch(`${baseUrl}/me/profile`, jsonRequest('PATCH', { displayName: 'Alice 2', avatarUrl: null }, { Authorization: `Bearer ${aliceToken}` }));
@@ -227,5 +267,37 @@ test('identity reset verifies password, increments identity version, and retires
     assert.equal(stored.retiredPublicKeyBundles.length, 1);
     assert.equal(stored.retiredPublicKeyBundles[0].fingerprint, vectors.publicKeyBundle.fingerprint);
     assert.deepEqual(repository.state.messages, []);
+  });
+});
+
+test('concurrent identity reset appends the active bundle and increments each winning update', async () => {
+  const { app, repository } = makeHarness();
+  await withServer(app, async (baseUrl) => {
+    const alice = await fetch(`${baseUrl}/auth/register`, jsonRequest('POST', registerBody()));
+    const token = (await alice.json()).data.accessToken;
+    const bundleA = resetBundle();
+    const bundleB = {
+      ...resetBundle(),
+      signingKey: { ...resetBundle().signingKey, keyId: 'k1_CCCCCCCCCCCCCCCCCCCCCC' },
+      encryptionKey: { ...resetBundle().encryptionKey, keyId: 'k1_DDDDDDDDDDDDDDDDDDDDDD' },
+      fingerprint: 'sha3-256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB'
+    };
+    const [first, second] = await Promise.all([
+      fetch(`${baseUrl}/identity/reset`, jsonRequest('POST', {
+        currentPassword: 'correct horse battery staple',
+        publicKeyBundle: bundleA
+      }, { Authorization: `Bearer ${token}` })),
+      fetch(`${baseUrl}/identity/reset`, jsonRequest('POST', {
+        currentPassword: 'correct horse battery staple',
+        publicKeyBundle: bundleB
+      }, { Authorization: `Bearer ${token}` }))
+    ]);
+    assert.equal(first.status, 200);
+    assert.equal(second.status, 200);
+    const stored = repository.state.users.get('alice');
+    assert.equal(stored.identityVersion, 3);
+    assert.equal(stored.retiredPublicKeyBundles.length, 2);
+    assert.equal(stored.retiredPublicKeyBundles[0].fingerprint, vectors.publicKeyBundle.fingerprint);
+    assert.ok(stored.retiredPublicKeyBundles[1].fingerprint === bundleA.fingerprint || stored.retiredPublicKeyBundles[1].fingerprint === bundleB.fingerprint);
   });
 });

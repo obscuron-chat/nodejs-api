@@ -14,6 +14,7 @@ const {
 const ACCESS_TOKEN_SECONDS = 15 * 60;
 const REFRESH_TOKEN_BYTES = 32;
 const REFRESH_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const DUMMY_PASSWORD_HASH = '$2b$12$wThDT6GJX/YAyB1u0vR3Jus3oI6JdWMndZM9aa00exAIhX3tySUIm';
 
 class PublicError extends Error {
   constructor(status, code, details = []) {
@@ -159,7 +160,7 @@ function createAuthService({ config, repository, clock = () => new Date(), rando
     }));
   }
 
-  function validatePublicProfileInput(body, { requirePassword = false, requirePublicKeyBundle = false } = {}) {
+  function validatePublicProfileInput(body, { requirePassword = false, requireDisplayName = false, requirePublicKeyBundle = false } = {}) {
     let details = validateExactObject(body, ['username', 'password', 'displayName', 'avatarUrl', 'publicKeyBundle']);
     if (!body || typeof body !== 'object' || Array.isArray(body)) throw new PublicError(400, 'VALIDATION_FAILED', details);
     const usernameResult = body.username === undefined ? { value: undefined, details: [] } : validateUsername(body.username);
@@ -167,6 +168,7 @@ function createAuthService({ config, repository, clock = () => new Date(), rando
     const avatarResult = body.avatarUrl === undefined ? { value: null, details: [] } : validateAvatarUrl(body.avatarUrl);
     details = details.concat(usernameResult.details, displayNameResult.details, avatarResult.details);
     if (requirePassword) details = details.concat(validatePassword(body.password).details);
+    if (requireDisplayName && body.displayName === undefined) details.push({ field: 'displayName', reason: 'Is required.' });
     if (body.currentPassword !== undefined) details = details.concat(validatePassword(body.currentPassword, 'currentPassword').details);
     if (requirePublicKeyBundle) {
       details = details.concat(validatePublicKeyBundle(body.publicKeyBundle).details);
@@ -188,7 +190,7 @@ function createAuthService({ config, repository, clock = () => new Date(), rando
   }
 
   async function register(body, meta = {}) {
-    const input = validatePublicProfileInput(body, { requirePassword: true, requirePublicKeyBundle: true });
+    const input = validatePublicProfileInput(body, { requirePassword: true, requireDisplayName: true, requirePublicKeyBundle: true });
     const existing = await repository.findUserByUsername(input.username, { includePasswordHash: false });
     if (existing) throw new PublicError(409, 'CONFLICT');
     const passwordHash = await bcrypt.hash(input.password, config.bcryptCost);
@@ -221,7 +223,8 @@ function createAuthService({ config, repository, clock = () => new Date(), rando
     const username = normalizeUsername(body.username);
     if (usernameFailures.isLimited(username) || ipFailures.isLimited(meta.ip || 'unknown')) throw new PublicError(429, 'RATE_LIMITED');
     const user = await repository.findUserByUsername(username, { includePasswordHash: true });
-    const passwordOk = user ? await bcrypt.compare(body.password, user.passwordHash) : false;
+    const passwordHash = user?.passwordHash || DUMMY_PASSWORD_HASH;
+    const passwordOk = await bcrypt.compare(body.password, passwordHash);
     if (!passwordOk) {
       usernameFailures.recordFailure(username);
       ipFailures.recordFailure(meta.ip || 'unknown');
@@ -288,6 +291,10 @@ function createAuthService({ config, repository, clock = () => new Date(), rando
   async function updateProfile(authorization, body) {
     const user = await currentUser(authorization);
     let details = validateExactObject(body, ['displayName', 'avatarUrl']);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) throw new PublicError(400, 'VALIDATION_FAILED', details);
+    if (!Object.hasOwn(body, 'displayName') && !Object.hasOwn(body, 'avatarUrl')) {
+      details.push({ field: 'body', reason: 'At least one profile field is required.' });
+    }
     if (body.displayName !== undefined) details = details.concat(validateDisplayName(body.displayName).details);
     if (body.avatarUrl !== undefined) details = details.concat(validateAvatarUrl(body.avatarUrl).details);
     if (details.length > 0) throw new PublicError(400, 'VALIDATION_FAILED', details);
@@ -339,6 +346,7 @@ function parseBearer(authorization) {
 
 module.exports = {
   ACCESS_TOKEN_SECONDS,
+  DUMMY_PASSWORD_HASH,
   PublicError,
   RateLimiter,
   createAuthService,
