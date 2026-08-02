@@ -1,0 +1,24 @@
+{
+  "$schema": "https://obscuron.faizath.com/schemas/ProtocolFixtureManifest.v1.json",
+  "version": 1,
+  "generatedFrom": "checkpoint-1-protocol-foundation",
+  "files": {
+    "conflict-ledger.json": {
+      "sha256": "d5806cec3a36a0c0591ce3ac8edf6a046c720856b0b10bb918c19dffd22f9a96"
+    },
+    "schemas.json": {
+      "sha256": "4b40757c42355731b03283d75d1b9d26d18b4817e7ebf35ed59dafe856173b21"
+    },
+    "vectors.json": {
+      "sha256": "b4a2160c69a027316d2f382b08ecc35184dd6ba4ce9e6e26e84e097cc9544e57"
+    }
+  },
+  "parity": {
+    "algorithm": "sha256",
+    "digest": "e1736fbb210fb9cb8b94b16aa0296fc4faa333d93b5c4f9719f62ff6e8ef20f8",
+    "mirrors": [
+      "nodejs-api/test/fixtures/protocol",
+      "obscuron-web/src/test/fixtures/protocol"
+    ]
+  }
+}

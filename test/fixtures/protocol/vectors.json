@@ -1,0 +1,178 @@
+{
+  "$schema": "https://obscuron.faizath.com/schemas/ProtocolVectors.v1.json",
+  "version": 1,
+  "publicKeyBundle": {
+    "version": 1,
+    "userId": "alice",
+    "createdAt": "2026-08-02T00:00:00.000Z",
+    "signingKey": {
+      "keyId": "k1_JPWyYEP-kQmA52aatoawqq",
+      "algorithm": "ECDSA-secp256k1-SHA3-256",
+      "publicKey": "A21sqsJIr5b2r6f5BPVQJToPPvP1qi_mg4qVshZpFGji"
+    },
+    "encryptionKey": {
+      "keyId": "k1_MOFHSW1TJ1ZQahQD8f_XsO",
+      "algorithm": "X25519-HKDF-SHA-256-AES-256-GCM",
+      "publicKey": "NYBy1jZYgNGu6jKa35EhODhR7SGijjt16WXQ0s0WYlQ"
+    },
+    "fingerprint": "sha3-256:cmnkxF4zPOvB5g20g8KiTHQR8RgC_l2akC1tkYjVtdc"
+  },
+  "signedMessagePayload": {
+    "version": 1,
+    "transcript": {
+      "messageId": "msg_01j5w7m6h2x8p4n9q0r1s2t3u4",
+      "conversationId": "conv_7Z4b2qN8pL5mR1xS9vA0cD",
+      "sender": "alice",
+      "receiver": "bob",
+      "plaintextMessage": "Arrive at 10:15.",
+      "messageHash": "sha3-256:O8AlxA71iztrI2B8mrCPvEYr8iLnUTBG1sg0e8t6OF8",
+      "sentAt": "2026-08-02T00:00:00.000Z"
+    },
+    "senderSigningKeyId": "k1_JPWyYEP-kQmA52aatoawqq",
+    "senderPublicKeyFingerprint": "sha3-256:cmnkxF4zPOvB5g20g8KiTHQR8RgC_l2akC1tkYjVtdc",
+    "signature": {
+      "algorithm": "ECDSA-secp256k1-SHA3-256-lowS",
+      "r": "KWTUsotY_ajyKrtWjWJm4t8CAW3q6LCh5bZMhASXznA",
+      "s": "EDKWh4S2Tlb8dlN3vG83nwWBdTGBoYYEUehrZDZgYko"
+    }
+  },
+  "encryptedMessageEnvelope": {
+    "version": 1,
+    "messageId": "msg_01j5w7m6h2x8p4n9q0r1s2t3u4",
+    "conversationId": "conv_7Z4b2qN8pL5mR1xS9vA0cD",
+    "sender": "alice",
+    "receiver": "bob",
+    "senderEncryptionKeyId": "k1_MOFHSW1TJ1ZQahQD8f_XsO",
+    "receiverEncryptionKeyId": "k1_a18FqjRu4CNAYDugDiyRR0",
+    "senderSigningKeyId": "k1_JPWyYEP-kQmA52aatoawqq",
+    "senderPublicKeyFingerprint": "sha3-256:cmnkxF4zPOvB5g20g8KiTHQR8RgC_l2akC1tkYjVtdc",
+    "hkdfSalt": "YGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn8",
+    "sentAt": "2026-08-02T00:00:00.000Z",
+    "nonce": "gIGCg4SFhoeIiYqL",
+    "ciphertext": "DuxrXSbruDqU4Ymgp-WpBkHnAOiaTBx8HRz5Bh1bvgn0wMSIMLjbM3hUMAOoNYvU7CPtjrkAkE7AfeffMCKYSEfIMC7iuA_D6lc_VD-psDWYgoSvxCLUHppvtsLi69gtsEalrEFa-rFzuv5SGTxi8W6DU_-4Ruch7ynxioX9jAZqz20ezCC8v3I24Ff1FN7oYx7vrZ3UpZfAIYrY1Kr3FdBX1pjehc8uXPntq7ZwCXLtag1O6CiGYm_AC0WdvO_oxVNaeTwjofwGYs1RNXbbXl6RkWy_qtJlDGKMd1cU-g0a3kszyPP9qwhRdT9k6-NXtW5YsDt5Wm8bTfyAAppp7Ag__z53VLiqP556os9YSxEZhJ9jvdON_AbxeLreWRAHzGdeHUMEAN7N6N_hQGeXnJJvowjSE1g97JZ5x6B35_a6HtULEZMo-fmvQQIIxBJveexNR9a1uTlHKd-UPuhkvWxH75oqtPCPxjT2N8fNiV4Dj2toyoT8mhoZXXU5M5dmLdLkUqOQez2PgLOr-SboKjRu6qdeuIj-asfyesJFcZG15j6vRfKWJEKv-0Ts4pwTGC4aeXGJoOX6CtPeT6n80B94kBu3rlLmSMS3Ixu9oHK9DZ3mk0gr_H6_EFWTugtWkvEpLbuuopiKzzvYZ0HMGFIBCwXjP2g1Z-gZj2b5ZhDEcCM28P-PQbeiZfMd1pOhV8fDk7_9F0SGKFWWd-UNvZPn7Hmcqa-IX2tE7goSEI5cPXYrT1csWo6V_H8BMsopjj46zCTkhzNMHxJgFybV7fWYjoIuTmgzrIfVHA"
+  },
+  "encryptedKeyBundle": {
+    "version": 1,
+    "context": "local-vault",
+    "userId": "alice",
+    "createdAt": "2026-08-02T00:00:00.000Z",
+    "publicKeyBundle": {
+      "version": 1,
+      "userId": "alice",
+      "createdAt": "2026-08-02T00:00:00.000Z",
+      "signingKey": {
+        "keyId": "k1_JPWyYEP-kQmA52aatoawqq",
+        "algorithm": "ECDSA-secp256k1-SHA3-256",
+        "publicKey": "A21sqsJIr5b2r6f5BPVQJToPPvP1qi_mg4qVshZpFGji"
+      },
+      "encryptionKey": {
+        "keyId": "k1_MOFHSW1TJ1ZQahQD8f_XsO",
+        "algorithm": "X25519-HKDF-SHA-256-AES-256-GCM",
+        "publicKey": "NYBy1jZYgNGu6jKa35EhODhR7SGijjt16WXQ0s0WYlQ"
+      },
+      "fingerprint": "sha3-256:cmnkxF4zPOvB5g20g8KiTHQR8RgC_l2akC1tkYjVtdc"
+    },
+    "publicKeyFingerprint": "sha3-256:cmnkxF4zPOvB5g20g8KiTHQR8RgC_l2akC1tkYjVtdc",
+    "kdf": {
+      "name": "PBKDF2",
+      "hash": "HMAC-SHA-256",
+      "iterations": 600000,
+      "salt": "kJGSk5SVlpeYmZqbnJ2enw"
+    },
+    "cipher": "AES-256-GCM",
+    "nonce": "oKGio6Slpqeoqaqr",
+    "ciphertext": "fv_KHWG1afm1uEsnSE2cqO4lkLYpPLMGL-RdTQye5QxMxhcbJr2EJZtBN17r1PTqqLo1kDCn96SfLN-X_dEnTMFsB2RPaihyNLq1iXZjl1O5hD4EYUCdt-NVM1ewbLBrOaZtXtkJAudBCj-eEYvVEHk_Q2uPIEkSPrrQHtJUQc5xJrIUg48OTBLreXaRnyPEaMs8gMg2k5ZnEgcTMsgjz6iK9TALwItN0K3yvLUzPbx0HWXkJOpEpyNZ_GaU8wlMJQ9lWVtyjCzh6Qo4HQDjY3NC_5JPGINAuuC66QE1B3R7OLQllZr-5Y0OVIyoXOGBJNdAcRMG8IdVJJ1L-ve_IlH7WkPUPJi2nIdvFF2DscDF9Xr0bB3y1w6Vfr9Jyf3wQ0cSCgaDfBHA_jiicGuKIOM_2sSBpHXF_LLYJbpzyuSjHNkruWjGQjJy80tFvantLLBRUQqyT4apR5O6-jHK",
+    "bundleHash": "sha3-256:94w4swAm8xpBYqc-7jJUmT52aeMR3GFgdn8kHag51vw"
+  },
+  "privateKeyPlaintext": {
+    "version": 1,
+    "signingPrivateKey": {
+      "keyId": "k1_JPWyYEP-kQmA52aatoawqq",
+      "algorithm": "ECDSA-secp256k1-SHA3-256",
+      "privateKey": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8"
+    },
+    "encryptionPrivateKey": {
+      "keyId": "k1_MOFHSW1TJ1ZQahQD8f_XsO",
+      "algorithm": "X25519-HKDF-SHA-256-AES-256-GCM",
+      "privateKey": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8"
+    }
+  },
+  "cryptoVectors": {
+    "base64url": {
+      "bytesHex": "000102fbfcfdfeff",
+      "encoded": "AAEC-_z9_v8",
+      "reject": [
+        "AAEC+/z9/v8=",
+        "AAEC-_z9_v8=",
+        "AAEC _z9_v8"
+      ]
+    },
+    "jcs": {
+      "input": {
+        "z": 1,
+        "a": {
+          "b": 2,
+          "a": 1
+        },
+        "arr": [
+          3,
+          {
+            "y": "yes",
+            "x": "no"
+          }
+        ]
+      },
+      "canonical": "{\"a\":{\"a\":1,\"b\":2},\"arr\":[3,{\"x\":\"no\",\"y\":\"yes\"}],\"z\":1}"
+    },
+    "sha3": {
+      "plaintext": "Arrive at 10:15.",
+      "messageHash": "sha3-256:O8AlxA71iztrI2B8mrCPvEYr8iLnUTBG1sg0e8t6OF8",
+      "transcriptDigest": "Sn6zQ5csseOjCDbjUTRy3TIEojvnX7a9icJ5Ej9cFGg"
+    },
+    "keys": {
+      "signingPrivateKey": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+      "aliceX25519PrivateKey": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8",
+      "bobX25519PrivateKey": "QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaW1xdXl8",
+      "signingPublicKey": "A21sqsJIr5b2r6f5BPVQJToPPvP1qi_mg4qVshZpFGji",
+      "aliceX25519PublicKey": "NYBy1jZYgNGu6jKa35EhODhR7SGijjt16WXQ0s0WYlQ",
+      "bobX25519PublicKey": "eaYx7t4b-cmPEgMs3q3Q56B5OY_HhriMyEbsia-FpRo",
+      "signingKeyId": "k1_JPWyYEP-kQmA52aatoawqq",
+      "senderEncryptionKeyId": "k1_MOFHSW1TJ1ZQahQD8f_XsO",
+      "receiverEncryptionKeyId": "k1_a18FqjRu4CNAYDugDiyRR0",
+      "publicKeyFingerprint": "sha3-256:cmnkxF4zPOvB5g20g8KiTHQR8RgC_l2akC1tkYjVtdc"
+    },
+    "signature": {
+      "digest": "Sn6zQ5csseOjCDbjUTRy3TIEojvnX7a9icJ5Ej9cFGg",
+      "r": "KWTUsotY_ajyKrtWjWJm4t8CAW3q6LCh5bZMhASXznA",
+      "s": "EDKWh4S2Tlb8dlN3vG83nwWBdTGBoYYEUehrZDZgYko",
+      "highSReject": true
+    },
+    "encryption": {
+      "sharedSecret": "BMME-xyoPO514gY0QjHzN5fgfZkp22cJlLfG--sdwlU",
+      "hkdf": "HKDF-SHA-256",
+      "hkdfInfo": "Obscuron message envelope v1",
+      "hkdfSalt": "YGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn8",
+      "aesGcmKey": "tg07DET3rGwSk3Ba9smGtxqnXwNTqEsYgJuMLn_0EyY",
+      "aadCanonical": "{\"conversationId\":\"conv_7Z4b2qN8pL5mR1xS9vA0cD\",\"hkdfSalt\":\"YGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn8\",\"messageId\":\"msg_01j5w7m6h2x8p4n9q0r1s2t3u4\",\"receiver\":\"bob\",\"receiverEncryptionKeyId\":\"k1_a18FqjRu4CNAYDugDiyRR0\",\"sender\":\"alice\",\"senderEncryptionKeyId\":\"k1_MOFHSW1TJ1ZQahQD8f_XsO\",\"senderPublicKeyFingerprint\":\"sha3-256:cmnkxF4zPOvB5g20g8KiTHQR8RgC_l2akC1tkYjVtdc\",\"senderSigningKeyId\":\"k1_JPWyYEP-kQmA52aatoawqq\",\"sentAt\":\"2026-08-02T00:00:00.000Z\",\"version\":1}",
+      "nonce": "gIGCg4SFhoeIiYqL",
+      "ciphertextWithTag": "DuxrXSbruDqU4Ymgp-WpBkHnAOiaTBx8HRz5Bh1bvgn0wMSIMLjbM3hUMAOoNYvU7CPtjrkAkE7AfeffMCKYSEfIMC7iuA_D6lc_VD-psDWYgoSvxCLUHppvtsLi69gtsEalrEFa-rFzuv5SGTxi8W6DU_-4Ruch7ynxioX9jAZqz20ezCC8v3I24Ff1FN7oYx7vrZ3UpZfAIYrY1Kr3FdBX1pjehc8uXPntq7ZwCXLtag1O6CiGYm_AC0WdvO_oxVNaeTwjofwGYs1RNXbbXl6RkWy_qtJlDGKMd1cU-g0a3kszyPP9qwhRdT9k6-NXtW5YsDt5Wm8bTfyAAppp7Ag__z53VLiqP556os9YSxEZhJ9jvdON_AbxeLreWRAHzGdeHUMEAN7N6N_hQGeXnJJvowjSE1g97JZ5x6B35_a6HtULEZMo-fmvQQIIxBJveexNR9a1uTlHKd-UPuhkvWxH75oqtPCPxjT2N8fNiV4Dj2toyoT8mhoZXXU5M5dmLdLkUqOQez2PgLOr-SboKjRu6qdeuIj-asfyesJFcZG15j6vRfKWJEKv-0Ts4pwTGC4aeXGJoOX6CtPeT6n80B94kBu3rlLmSMS3Ixu9oHK9DZ3mk0gr_H6_EFWTugtWkvEpLbuuopiKzzvYZ0HMGFIBCwXjP2g1Z-gZj2b5ZhDEcCM28P-PQbeiZfMd1pOhV8fDk7_9F0SGKFWWd-UNvZPn7Hmcqa-IX2tE7goSEI5cPXYrT1csWo6V_H8BMsopjj46zCTkhzNMHxJgFybV7fWYjoIuTmgzrIfVHA",
+      "tamperedAadFields": [
+        "conversationId",
+        "sender",
+        "receiver",
+        "sentAt",
+        "senderEncryptionKeyId",
+        "receiverEncryptionKeyId",
+        "senderSigningKeyId",
+        "senderPublicKeyFingerprint",
+        "hkdfSalt"
+      ]
+    },
+    "vault": {
+      "passphrase": "correct horse battery staple",
+      "aadCanonical": "{\"cipher\":\"AES-256-GCM\",\"context\":\"local-vault\",\"createdAt\":\"2026-08-02T00:00:00.000Z\",\"kdf\":{\"hash\":\"HMAC-SHA-256\",\"iterations\":600000,\"name\":\"PBKDF2\",\"salt\":\"kJGSk5SVlpeYmZqbnJ2enw\"},\"publicKeyBundle\":{\"createdAt\":\"2026-08-02T00:00:00.000Z\",\"encryptionKey\":{\"algorithm\":\"X25519-HKDF-SHA-256-AES-256-GCM\",\"keyId\":\"k1_MOFHSW1TJ1ZQahQD8f_XsO\",\"publicKey\":\"NYBy1jZYgNGu6jKa35EhODhR7SGijjt16WXQ0s0WYlQ\"},\"fingerprint\":\"sha3-256:cmnkxF4zPOvB5g20g8KiTHQR8RgC_l2akC1tkYjVtdc\",\"signingKey\":{\"algorithm\":\"ECDSA-secp256k1-SHA3-256\",\"keyId\":\"k1_JPWyYEP-kQmA52aatoawqq\",\"publicKey\":\"A21sqsJIr5b2r6f5BPVQJToPPvP1qi_mg4qVshZpFGji\"},\"userId\":\"alice\",\"version\":1},\"publicKeyFingerprint\":\"sha3-256:cmnkxF4zPOvB5g20g8KiTHQR8RgC_l2akC1tkYjVtdc\",\"userId\":\"alice\",\"version\":1}",
+      "privatePlaintextCanonical": "{\"encryptionPrivateKey\":{\"algorithm\":\"X25519-HKDF-SHA-256-AES-256-GCM\",\"keyId\":\"k1_MOFHSW1TJ1ZQahQD8f_XsO\",\"privateKey\":\"ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8\"},\"signingPrivateKey\":{\"algorithm\":\"ECDSA-secp256k1-SHA3-256\",\"keyId\":\"k1_JPWyYEP-kQmA52aatoawqq\",\"privateKey\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\"},\"version\":1}",
+      "bundleHash": "sha3-256:94w4swAm8xpBYqc-7jJUmT52aeMR3GFgdn8kHag51vw"
+    }
+  }
+}

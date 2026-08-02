@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": 1,
+  "schemas": {
+    "PublicKeyBundle": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://obscuron.faizath.com/schemas/PublicKeyBundle.v1.json",
+      "title": "PublicKeyBundle",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "userId", "createdAt", "signingKey", "encryptionKey", "fingerprint"],
+      "properties": {
+        "version": { "const": 1 },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "signingKey": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["keyId", "algorithm", "publicKey"],
+          "properties": {
+            "keyId": { "type": "string", "pattern": "^k1_[A-Za-z0-9_-]{22}$" },
+            "algorithm": { "const": "ECDSA-secp256k1-SHA3-256" },
+            "publicKey": { "type": "string", "pattern": "^[A-Za-z0-9_-]{44}$" }
+          }
+        },
+        "encryptionKey": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["keyId", "algorithm", "publicKey"],
+          "properties": {
+            "keyId": { "type": "string", "pattern": "^k1_[A-Za-z0-9_-]{22}$" },
+            "algorithm": { "const": "X25519-HKDF-SHA-256-AES-256-GCM" },
+            "publicKey": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" }
+          }
+        },
+        "fingerprint": { "type": "string", "pattern": "^sha3-256:[A-Za-z0-9_-]{43}$" }
+      }
+    },
+    "SignedMessagePayload": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://obscuron.faizath.com/schemas/SignedMessagePayload.v1.json",
+      "title": "SignedMessagePayload",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "transcript", "senderSigningKeyId", "senderPublicKeyFingerprint", "signature"],
+      "properties": {
+        "version": { "const": 1 },
+        "transcript": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["messageId", "conversationId", "sender", "receiver", "plaintextMessage", "messageHash", "sentAt"],
+          "properties": {
+            "messageId": { "type": "string", "pattern": "^msg_[A-Za-z0-9_-]{26,64}$" },
+            "conversationId": { "type": "string", "pattern": "^conv_[A-Za-z0-9_-]{16,64}$" },
+            "sender": { "type": "string", "minLength": 1, "maxLength": 128 },
+            "receiver": { "type": "string", "minLength": 1, "maxLength": 128 },
+            "plaintextMessage": { "type": "string", "minLength": 1, "maxLength": 4096 },
+            "messageHash": { "type": "string", "pattern": "^sha3-256:[A-Za-z0-9_-]{43}$" },
+            "sentAt": { "type": "string", "format": "date-time" }
+          }
+        },
+        "senderSigningKeyId": { "type": "string", "pattern": "^k1_[A-Za-z0-9_-]{22}$" },
+        "senderPublicKeyFingerprint": { "type": "string", "pattern": "^sha3-256:[A-Za-z0-9_-]{43}$" },
+        "signature": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["algorithm", "r", "s"],
+          "properties": {
+            "algorithm": { "const": "ECDSA-secp256k1-SHA3-256-lowS" },
+            "r": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" },
+            "s": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" }
+          }
+        }
+      }
+    },
+    "EncryptedMessageEnvelope": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://obscuron.faizath.com/schemas/EncryptedMessageEnvelope.v1.json",
+      "title": "EncryptedMessageEnvelope",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "messageId", "conversationId", "sender", "receiver", "senderEncryptionKeyId", "receiverEncryptionKeyId", "senderSigningKeyId", "senderPublicKeyFingerprint", "hkdfSalt", "nonce", "ciphertext", "sentAt"],
+      "properties": {
+        "version": { "const": 1 },
+        "messageId": { "type": "string", "pattern": "^msg_[A-Za-z0-9_-]{26,64}$" },
+        "conversationId": { "type": "string", "pattern": "^conv_[A-Za-z0-9_-]{16,64}$" },
+        "sender": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "receiver": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "senderEncryptionKeyId": { "type": "string", "pattern": "^k1_[A-Za-z0-9_-]{22}$" },
+        "receiverEncryptionKeyId": { "type": "string", "pattern": "^k1_[A-Za-z0-9_-]{22}$" },
+        "senderSigningKeyId": { "type": "string", "pattern": "^k1_[A-Za-z0-9_-]{22}$" },
+        "senderPublicKeyFingerprint": { "type": "string", "pattern": "^sha3-256:[A-Za-z0-9_-]{43}$" },
+        "hkdfSalt": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" },
+        "nonce": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16}$" },
+        "ciphertext": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
+        "sentAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "EncryptedKeyBundle": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://obscuron.faizath.com/schemas/EncryptedKeyBundle.v1.json",
+      "title": "EncryptedKeyBundle",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "context", "userId", "createdAt", "publicKeyBundle", "publicKeyFingerprint", "kdf", "cipher", "nonce", "ciphertext", "bundleHash"],
+      "properties": {
+        "version": { "const": 1 },
+        "context": { "enum": ["local-vault", "export"] },
+        "userId": { "type": "string", "pattern": "^[a-z0-9_]{3,32}$" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "publicKeyBundle": { "$ref": "PublicKeyBundle.v1.json" },
+        "publicKeyFingerprint": { "type": "string", "pattern": "^sha3-256:[A-Za-z0-9_-]{43}$" },
+        "kdf": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "hash", "iterations", "salt"],
+          "properties": {
+            "name": { "const": "PBKDF2" },
+            "hash": { "const": "HMAC-SHA-256" },
+            "iterations": { "const": 600000 },
+            "salt": { "type": "string", "pattern": "^[A-Za-z0-9_-]{22}$" }
+          }
+        },
+        "cipher": { "const": "AES-256-GCM" },
+        "nonce": { "type": "string", "pattern": "^[A-Za-z0-9_-]{16}$" },
+        "ciphertext": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
+        "bundleHash": { "type": "string", "pattern": "^sha3-256:[A-Za-z0-9_-]{43}$" }
+      }
+    }
+  }
+}

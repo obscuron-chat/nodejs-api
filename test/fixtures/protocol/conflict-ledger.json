@@ -1,0 +1,29 @@
+{
+  "$schema": "https://obscuron.faizath.com/schemas/ProtocolConflictLedger.v1.json",
+  "version": 1,
+  "username": {
+    "pattern": "^[a-z0-9_]{3,32}$",
+    "normalization": "trim",
+    "accept": ["alice", "bob_2026", "user123"],
+    "reject": ["AlIce", "alice-bob", "alice.bob", "ab", "user name", "alice "],
+    "decision": "Accept only lowercase ASCII letters, digits, and underscores after trimming; reject uppercase, dot, hyphen, and mixed-case input."
+  },
+  "webSocketCloseCodes": {
+    "normalClosure": { "code": 1000, "reason": "normal_closure" },
+    "serverShutdown": { "code": 1001, "reason": "server_shutdown" },
+    "badRequest": { "code": 4400, "reason": "bad_request" },
+    "authenticationRequired": { "code": 4401, "reason": "authentication_required" },
+    "invalidToken": { "code": 4401, "reason": "invalid_token" },
+    "tokenExpired": { "code": 4401, "reason": "token_expired" },
+    "forbidden": { "code": 4403, "reason": "forbidden" },
+    "authenticationTimeout": { "code": 4408, "reason": "authentication_timeout" },
+    "rateLimited": { "code": 4429, "reason": "rate_limited" },
+    "internalError": { "code": 4500, "reason": "internal_error" }
+  },
+  "firstFrameDecisions": {
+    "noFrameWithinFiveSeconds": "authenticationTimeout",
+    "validJsonNonAuthenticateEvent": "authenticationRequired",
+    "malformedJson": "badRequest",
+    "invalidSchema": "badRequest"
+  }
+}
