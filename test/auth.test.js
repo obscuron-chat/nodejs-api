@@ -22,11 +22,11 @@ function makeHarness() {
   return { app, authService, config, repository };
 }
 
-function registerBody(username = 'alice') {
+function registerBody(username = 'alice', displayName = 'Alice') {
   return {
     username,
     password: 'correct horse battery staple',
-    displayName: 'Alice',
+    displayName,
     avatarUrl: 'https://example.com/alice.png',
     publicKeyBundle: { ...vectors.publicKeyBundle, userId: username }
   };
@@ -241,6 +241,38 @@ test('protected profile, users, and me endpoints serialize public fields and rej
     const updated = await fetch(`${baseUrl}/me/profile`, jsonRequest('PATCH', { displayName: 'Alice 2', avatarUrl: null }, { Authorization: `Bearer ${aliceToken}` }));
     assert.equal(updated.status, 200);
     assert.equal((await updated.json()).data.user.displayName, 'Alice 2');
+  });
+});
+
+// Contact discovery paging.
+test('user discovery applies q, limit, and opaque cursor paging while excluding the caller', async () => {
+  const { app } = makeHarness();
+  await withServer(app, async (baseUrl) => {
+    const alice = await fetch(`${baseUrl}/auth/register`, jsonRequest('POST', registerBody('alice', 'Alice')));
+    const token = (await alice.json()).data.accessToken;
+    for (const [username, displayName] of [['bob', 'Bobby'], ['carol', 'Carol'], ['bobby_two', 'Bee']]) {
+      await fetch(`${baseUrl}/auth/register`, jsonRequest('POST', registerBody(username, displayName)));
+    }
+    const auth = { Authorization: `Bearer ${token}` };
+
+    const firstPage = await (await fetch(`${baseUrl}/users?limit=2`, { headers: auth })).json();
+    assert.deepEqual(firstPage.data.users.map((user) => user.username), ['bob', 'bobby_two']);
+    assert.ok(firstPage.data.nextCursor);
+
+    const secondPage = await (await fetch(`${baseUrl}/users?limit=2&cursor=${encodeURIComponent(firstPage.data.nextCursor)}`, { headers: auth })).json();
+    assert.deepEqual(secondPage.data.users.map((user) => user.username), ['carol']);
+    assert.equal(secondPage.data.nextCursor, null);
+
+    const byUsername = await (await fetch(`${baseUrl}/users?q=bob`, { headers: auth })).json();
+    assert.deepEqual(byUsername.data.users.map((user) => user.username), ['bob', 'bobby_two']);
+    const byDisplayName = await (await fetch(`${baseUrl}/users?q=Car`, { headers: auth })).json();
+    assert.deepEqual(byDisplayName.data.users.map((user) => user.username), ['carol']);
+
+    for (const query of ['limit=0', 'limit=101', 'limit=abc', 'cursor=not-a-cursor', 'unknown=1']) {
+      const rejected = await fetch(`${baseUrl}/users?${query}`, { headers: auth });
+      assert.equal(rejected.status, 400, query);
+      assert.equal((await rejected.json()).error.code, 'VALIDATION_FAILED');
+    }
   });
 });
 

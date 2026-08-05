@@ -120,8 +120,15 @@ function createFakeRepository() {
       return publicCloneUser(user);
     },
 
-    async listPublicUsersExcept(username) {
-      return [...state.users.values()].filter((user) => user.username !== username).map(publicCloneUser);
+    async listPublicUsersExcept(username, { q = '', cursor = null, limit = 50 } = {}) {
+      const prefix = q.toLowerCase();
+      return [...state.users.values()]
+        .filter((user) => user.username !== username)
+        .filter((user) => !prefix || user.username.toLowerCase().startsWith(prefix) || user.displayName.toLowerCase().startsWith(prefix))
+        .filter((user) => !cursor || user.usernameNormalized > cursor.after)
+        .sort((left, right) => left.usernameNormalized.localeCompare(right.usernameNormalized))
+        .slice(0, limit + 1)
+        .map(publicCloneUser);
     },
 
     async resetIdentity(username, publicKeyBundle, now) {

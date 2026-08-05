@@ -40,8 +40,16 @@ function createMongoRepository(mongo, models = { EncryptedMessage, RefreshSessio
       return normalizeUser(await UserModel.findOneAndUpdate({ usernameNormalized: username }, { $set: update }, { new: true }).lean());
     },
 
-    async listPublicUsersExcept(username) {
-      return (await UserModel.find({ usernameNormalized: { $ne: username } }).lean()).map(normalizeUser);
+    async listPublicUsersExcept(username, { q = '', cursor = null, limit = 50 } = {}) {
+      const query = { usernameNormalized: { $ne: username } };
+      if (q) {
+        const prefix = new RegExp(`^${escapeRegExp(q)}`, 'i');
+        query.$or = [{ usernameNormalized: prefix }, { displayName: prefix }];
+      }
+      if (cursor) query.usernameNormalized.$gt = cursor.after;
+      // Fetch one past the page so the caller can tell whether a next cursor exists.
+      const users = await UserModel.find(query).sort({ usernameNormalized: 1 }).limit(limit + 1).lean();
+      return users.map(normalizeUser);
     },
 
     async resetIdentity(username, publicKeyBundle, now) {
@@ -208,6 +216,10 @@ function createMongoRepository(mongo, models = { EncryptedMessage, RefreshSessio
   async function hasRevokedFamilyMarker(tokenFamilyId) {
     return Boolean(await RefreshSessionModel.findOne({ tokenFamilyId, revokedAt: { $ne: null } }).lean());
   }
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function encryptedEnvelopeMatches(existing, envelope) {

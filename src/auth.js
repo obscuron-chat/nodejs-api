@@ -14,6 +14,9 @@ const {
 const ACCESS_TOKEN_SECONDS = 15 * 60;
 const REFRESH_TOKEN_BYTES = 32;
 const REFRESH_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const DEFAULT_USER_LIMIT = 50;
+const MAX_USER_LIMIT = 100;
+const MAX_USER_QUERY_LENGTH = 32;
 const DUMMY_PASSWORD_HASH = '$2b$12$wThDT6GJX/YAyB1u0vR3Jus3oI6JdWMndZM9aa00exAIhX3tySUIm';
 
 class PublicError extends Error {
@@ -308,9 +311,16 @@ function createAuthService({ config, repository, clock = () => new Date(), rando
     });
   }
 
-  async function listUsers(authorization) {
+  async function listUsers(authorization, query = {}) {
     const user = await currentUser(authorization);
-    return repository.listPublicUsersExcept(user.username);
+    const options = parseUserListOptions(query);
+    const users = await repository.listPublicUsersExcept(user.username, options);
+    // One extra row tells us whether another page exists without a second count query.
+    const page = users.slice(0, options.limit);
+    return {
+      users: page,
+      nextCursor: users.length > options.limit ? encodeUserCursor(page[page.length - 1]) : null
+    };
   }
 
   async function resetIdentity(authorization, body) {
@@ -341,6 +351,48 @@ function createAuthService({ config, repository, clock = () => new Date(), rando
   };
 }
 
+function parseUserListOptions(query) {
+  const details = [];
+  if (query && typeof query === 'object' && !Array.isArray(query)) {
+    for (const key of Object.keys(query)) {
+      if (!['q', 'cursor', 'limit'].includes(key)) details.push({ field: key, reason: 'Unknown query parameter.' });
+    }
+  }
+  const rawLimit = query.limit === undefined ? DEFAULT_USER_LIMIT : Number(query.limit);
+  if (!Number.isInteger(rawLimit) || rawLimit < 1 || rawLimit > MAX_USER_LIMIT) {
+    details.push({ field: 'limit', reason: `Must be an integer from 1 to ${MAX_USER_LIMIT}.` });
+  }
+  if (query.q !== undefined && (typeof query.q !== 'string' || query.q.trim().length > MAX_USER_QUERY_LENGTH)) {
+    details.push({ field: 'q', reason: `Must be a string of at most ${MAX_USER_QUERY_LENGTH} characters.` });
+  }
+  let cursor = null;
+  if (query.cursor !== undefined && query.cursor !== '') {
+    cursor = decodeUserCursor(query.cursor);
+    if (!cursor) details.push({ field: 'cursor', reason: 'Is not a cursor issued by this server.' });
+  }
+  if (details.length > 0) throw new PublicError(400, 'VALIDATION_FAILED', details);
+  return {
+    q: typeof query.q === 'string' ? query.q.trim() : '',
+    cursor,
+    limit: rawLimit
+  };
+}
+
+function encodeUserCursor(user) {
+  return user ? Buffer.from(JSON.stringify({ after: user.username })).toString('base64url') : null;
+}
+
+function decodeUserCursor(raw) {
+  try {
+    const parsed = JSON.parse(Buffer.from(String(raw), 'base64url').toString('utf8'));
+    const keys = Object.keys(parsed);
+    if (keys.length !== 1 || keys[0] !== 'after') return null;
+    return validateUsername(parsed.after).details.length === 0 ? { after: parsed.after } : null;
+  } catch {
+    return null;
+  }
+}
+
 function parseBearer(authorization) {
   if (typeof authorization !== 'string') throw new PublicError(401, 'UNAUTHENTICATED');
   const match = authorization.match(/^Bearer\s+(.+)$/i);
@@ -351,8 +403,10 @@ function parseBearer(authorization) {
 module.exports = {
   ACCESS_TOKEN_SECONDS,
   DUMMY_PASSWORD_HASH,
+  MAX_USER_LIMIT,
   PublicError,
   RateLimiter,
   createAuthService,
-  parseBearer
+  parseBearer,
+  parseUserListOptions
 };

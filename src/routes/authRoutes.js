@@ -42,8 +42,8 @@ function registerAuthRoutes(app, { authService, config, realtimeService = null }
   }));
 
   app.get('/users', asyncHandler(async (req, res) => {
-    const users = await authService.listUsers(req.headers.authorization);
-    return success(res, 200, { users: users.map(publicUser) });
+    const page = await authService.listUsers(req.headers.authorization, req.query);
+    return success(res, 200, { users: page.users.map(publicUser), nextCursor: page.nextCursor });
   }));
 
   app.post('/identity/reset', asyncHandler(async (req, res) => {
