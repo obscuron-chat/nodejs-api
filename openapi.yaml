@@ -1,279 +1,726 @@
-openapi: 3.0.0
+openapi: 3.0.3
 info:
-  title: Obscuron Chat Core API
-  description: Obscuron Chat is a web-based encrypted chat app
-  version: 1.0.0
+  title: Obscuron API
+  version: 2.0.0
+  description: |
+    HTTP and WebSocket contract for Obscuron, a web-based end-to-end encrypted
+    1:1 chat service.
+
+    The server stores public key bundles and ciphertext envelopes only. Private
+    keys, vault bundles, and plaintext message bodies never reach this API.
+  license:
+    name: MIT
 servers:
-  - url: https://api.obscuron.chat
-    description: Production Server
+  - url: https://obscuron-api.faizath.com
+    description: Production
   - url: http://localhost:8080
-    description: Local Development Server
+    description: Local development
+
+tags:
+  - name: Auth
+    description: Registration, login, refresh-token rotation, and logout.
+  - name: Profile
+    description: Authenticated account profile and contact discovery.
+  - name: Messages
+    description: Retained ciphertext history.
+  - name: Identity
+    description: Cryptographic identity reset.
+  - name: Operations
+    description: Liveness and readiness probes.
+
+security:
+  - bearerAuth: []
+
 paths:
-  /auth:
-    post:
-      summary: Login or register
+  /healthz:
+    get:
+      tags: [Operations]
+      summary: Process liveness
+      description: Returns 200 whenever the process can serve HTTP. Does not touch MongoDB.
+      security: []
+      responses:
+        '200':
+          description: Process is alive.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          status: { type: string, enum: [ok] }
+
+  /readyz:
+    get:
+      tags: [Operations]
+      summary: Readiness
       description: |
-        If a user with the provided `username` exists and the `password` matches, logs in and returns a JWT.
-        Otherwise, registers a new user (saving the optional `publicKey`) and returns a JWT.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AuthRequest'
+        Returns 200 only when MongoDB is reachable, required indexes exist, and
+        the WebSocket server is accepting upgrades. Returns 503 otherwise.
+        Responses never expose dependency URLs or topology.
+      security: []
       responses:
         '200':
-          description: Success (login or registration)
+          description: Service is ready.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthSuccessResponse'
-        '400':
-          description: Bad request or unsuccessful login
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /profile:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          status: { type: string, enum: [ready] }
+        '503':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/register:
     post:
-      summary: Update profile
-      security:
-        - bearerAuth: []
+      tags: [Auth]
+      summary: Create an account and publish its public key bundle
+      description: |
+        Creates the user, stores the bcrypt cost-12 password hash and the
+        supplied `PublicKeyBundle`, returns a 15 minute access token, and sets a
+        rotating refresh cookie. The client creates and keeps its encrypted local
+        vault independently; an `encryptedKeyBundle` field is rejected.
+      security: []
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/ProfileRequest'
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '201':
+          description: Account created.
+          headers:
+            Set-Cookie:
+              description: Rotating `HttpOnly; Secure; SameSite=Strict` refresh cookie.
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/SessionData' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Authenticate an existing account
+      description: |
+        Verifies the password with bcrypt and issues a fresh access token plus a
+        new rotating refresh cookie. Invalid username and invalid password return
+        the same generic `401 UNAUTHENTICATED`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
       responses:
         '200':
-          description: Profile updated
+          description: Authenticated.
+          headers:
+            Set-Cookie:
+              description: Rotating refresh cookie.
+              schema: { type: string }
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProfileSuccessResponse'
-        '400':
-          description: Bad request
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/SessionData' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Rotate the refresh token
+      description: |
+        Reads the refresh token only from the refresh cookie; bodies, query
+        parameters, and `Authorization` headers are ignored. A
+        successful call invalidates the previous token and sets a replacement
+        cookie. Replaying a rotated token revokes the whole family.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false }
+      responses:
+        '200':
+          description: New access token issued.
+          headers:
+            Set-Cookie:
+              description: Replacement refresh cookie.
+              schema: { type: string }
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Unauthorized or invalid token
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/SessionData' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke the refresh-token family
+      description: |
+        Revokes the current refresh-token family, clears the refresh cookie, and
+        closes that user's active WebSocket connections. Idempotent:
+        a missing or already revoked cookie still returns 204.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: false }
+      responses:
+        '204':
+          description: Logged out.
+          headers:
+            Set-Cookie:
+              description: Cleared refresh cookie.
+              schema: { type: string }
+
+  /me:
+    get:
+      tags: [Profile]
+      summary: Read the authenticated profile
+      description: Never returns password hashes, refresh tokens, private keys, or vault data.
+      responses:
+        '200':
+          description: Current profile.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [user]
+                        properties:
+                          user: { $ref: '#/components/schemas/PublicUser' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
+  /me/profile:
+    patch:
+      tags: [Profile]
+      summary: Update display name and avatar
+      description: |
+        Requires at least one supported field and rejects unknown fields.
+        Username, password, key bundle, role, and account
+        status cannot be changed here.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProfilePatchRequest' }
+      responses:
+        '200':
+          description: Profile updated.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [user]
+                        properties:
+                          user: { $ref: '#/components/schemas/PublicUser' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
   /users:
     get:
-      summary: List users
-      description: Returns all users without sensitive fields (`password`, `_id`, `__v`).
+      tags: [Profile]
+      summary: Discover contacts
+      description: |
+        Returns other registered users with their public contact fields only, and
+        always excludes the requesting user. Cursors are opaque;
+        clients must not parse or construct them.
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Case-insensitive username or display-name prefix search.
+          schema: { type: string, maxLength: 32 }
+        - name: cursor
+          in: query
+          required: false
+          description: Opaque cursor returned as `nextCursor` by a previous page.
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
       responses:
         '200':
-          description: OK
+          description: One page of discoverable users.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UsersSuccessResponse'
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [users, nextCursor]
+                        properties:
+                          users:
+                            type: array
+                            items: { $ref: '#/components/schemas/PublicUser' }
+                          nextCursor:
+                            type: string
+                            nullable: true
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
   /messages/{peer}:
     get:
-      summary: Fetch encrypted conversation history
-      security:
-        - bearerAuth: []
+      tags: [Messages]
+      summary: Read retained ciphertext history
+      description: |
+        Returns only messages where the caller is sender or receiver and `peer` is
+        the other participant, ordered by `serverReceivedAt` descending
+        then `sentAt` then `messageId`. Ciphertext only: no plaintext,
+        previews, or server-derived snippets. Expired messages are
+        filtered even before the TTL sweep removes them.
       parameters:
-        - in: path
-          name: peer
+        - name: peer
+          in: path
           required: true
-          schema:
-            type: string
-            pattern: '^[a-z0-9_]{3,32}$'
-          description: Peer username; must not be the authenticated user.
-        - in: query
-          name: limit
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-          description: Maximum number of encrypted messages to return.
-        - in: query
-          name: cursor
-          schema:
-            type: string
-          description: Opaque pagination cursor from the previous response.
+          schema: { $ref: '#/components/schemas/Username' }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
       responses:
         '200':
-          description: Encrypted message history in descending server-received order.
+          description: One page of stored envelopes.
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: true
-        '400':
-          description: Invalid peer, limit, or cursor
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        required: [messages, nextCursor]
+                        properties:
+                          messages:
+                            type: array
+                            items: { $ref: '#/components/schemas/StoredMessage' }
+                          nextCursor:
+                            type: string
+                            nullable: true
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /identity/reset:
+    post:
+      tags: [Identity]
+      summary: Publish a replacement public key bundle
+      description: |
+        Requires a bearer token and current-password confirmation. Replaces the
+        active bundle, retires the previous one for verifying older history, and
+        increments the identity epoch. Historical ciphertext is never
+        deleted. The replacement encrypted vault stays client-only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IdentityResetRequest' }
+      responses:
+        '200':
+          description: New identity published.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Unauthorized or invalid token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Peer not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/IdentityResetData' }
+        '400': { $ref: '#/components/responses/ValidationFailed' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
   /ws:
     get:
-      summary: Authenticated realtime encrypted-message WebSocket
+      tags: [Messages]
+      summary: Authenticated realtime message socket
       description: |
-        Upgrades only exact `/ws` requests from configured origins. The first client frame must be `authenticate`; query-string credentials and non-`/ws` paths are rejected.
+        Upgrades only exact `/ws` requests whose `Origin` is on the configured
+        allowlist; query-string credentials are never trusted.
+        The first client frame must be `authenticate` within 5 seconds, else the
+        socket closes `4408 authentication_timeout`.
+
+        Supported event types: `authenticate`, `authenticated`, `message.send`,
+        `message.ack`, `message.new`, `message.delivered`, `error`.
+
+        The server derives the authoritative sender from the socket identity,
+        persists each envelope before acknowledging it,
+        deduplicates by `messageId`, and answers a changed re-send with
+        `MESSAGE_ID_CONFLICT`. Replay after `replay.afterCursor` is
+        bounded by `limit <= 100` and the retention window; an unusable cursor
+        yields `CURSOR_EXPIRED` and the client falls back to
+        `GET /messages/{peer}`.
+
+        Close codes: `1000 normal_closure`, `1001 server_shutdown`,
+        `4400 bad_request`, `4401 authentication_required`, `4401 invalid_token`,
+        `4401 token_expired`, `4403 forbidden`, `4408 authentication_timeout`,
+        `4429 rate_limited`, `4500 internal_error`.
+
+        Socket limits: 64 KiB `maxPayload`, `perMessageDeflate` disabled,
+        60 messages per minute per user, 5 concurrent
+        connections per user, and a 30 second heartbeat that
+        terminates after 2 missed pongs.
+      security: []
       responses:
         '101':
-          description: Switching Protocols (WebSocket upgrade)
+          description: Switching Protocols.
         '403':
-          description: Forbidden upgrade origin or path
+          description: Rejected upgrade path or origin.
+
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+      description: 15 minute access token. Browser clients keep it in memory only.
+
+  responses:
+    ValidationFailed:
+      description: Request validation failed.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Unauthenticated:
+      description: Missing, expired, malformed, or revoked credentials.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    NotFound:
+      description: Resource does not exist.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Conflict:
+      description: Username or message id uniqueness conflict.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    RateLimited:
+      description: Rate limit exceeded.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    UnsupportedMediaType:
+      description: Request body was not `application/json`.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    InternalError:
+      description: Unexpected server failure.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
   schemas:
-    ApiEnvelope:
+    Username:
+      type: string
+      pattern: '^[a-z0-9_]{3,32}$'
+      description: Canonical lowercase username.
+
+    SuccessEnvelope:
       type: object
+      required: [ok, data]
+      description: Envelope shared by every 2xx response.
       properties:
-        status:
-          type: string
-          enum: [success, error]
-        message:
-          type: string
-        data:
+        ok: { type: boolean, enum: [true] }
+        data: { type: object }
+
+    ErrorEnvelope:
+      type: object
+      required: [ok, error]
+      description: Envelope shared by every failure response.
+      properties:
+        ok: { type: boolean, enum: [false] }
+        error:
           type: object
-      required: [status, message, data]
-    ErrorResponse:
-      allOf:
-        - $ref: '#/components/schemas/ApiEnvelope'
-        - type: object
+          required: [code, message, details, requestId]
           properties:
-            status:
+            code:
               type: string
-              enum: [error]
-          required: [status]
-    AuthRequest:
+              description: Stable uppercase identifier.
+              enum:
+                - VALIDATION_FAILED
+                - UNAUTHENTICATED
+                - FORBIDDEN
+                - NOT_FOUND
+                - CONFLICT
+                - CURSOR_EXPIRED
+                - MESSAGE_ID_CONFLICT
+                - RATE_LIMITED
+                - INTERNAL_ERROR
+                - UNSUPPORTED_MEDIA_TYPE
+            message:
+              type: string
+              description: Safe to show a user. Never contains stack traces, secrets, or plaintext.
+            details:
+              type: array
+              items:
+                type: object
+                required: [reason]
+                properties:
+                  field: { type: string }
+                  reason: { type: string }
+            requestId:
+              type: string
+              nullable: true
+              description: Correlates the failure with server logs.
+
+    PublicKey:
       type: object
+      additionalProperties: false
+      required: [keyId, algorithm, publicKey]
       properties:
-        username:
-          type: string
-        password:
-          type: string
-          format: password
+        keyId: { type: string, pattern: '^k1_[A-Za-z0-9_-]{22}$' }
+        algorithm: { type: string }
         publicKey:
           type: string
-          description: Optional; stored on registration if provided
-      required: [username, password]
-    AuthData:
+          description: Raw public key bytes, base64url without padding.
+
+    PublicKeyBundle:
       type: object
+      additionalProperties: false
+      required: [version, userId, createdAt, signingKey, encryptionKey, fingerprint]
+      description: |
+        The only public-key object the server stores for a user. It
+        carries public key material, key identifiers, algorithm names, and the
+        fingerprint — nothing else. The verifier recomputes the
+        fingerprint and rejects a mismatch.
       properties:
-        username:
+        version: { type: integer, enum: [1] }
+        userId: { type: string, minLength: 1, maxLength: 128 }
+        createdAt: { type: string, format: date-time }
+        signingKey:
+          allOf:
+            - $ref: '#/components/schemas/PublicKey'
+            - type: object
+              properties:
+                algorithm: { type: string, enum: [ECDSA-secp256k1-SHA3-256] }
+                publicKey: { type: string, pattern: '^[A-Za-z0-9_-]{44}$' }
+        encryptionKey:
+          allOf:
+            - $ref: '#/components/schemas/PublicKey'
+            - type: object
+              properties:
+                algorithm: { type: string, enum: [X25519-HKDF-SHA-256-AES-256-GCM] }
+                publicKey: { type: string, pattern: '^[A-Za-z0-9_-]{43}$' }
+        fingerprint: { type: string, pattern: '^sha3-256:[A-Za-z0-9_-]{43}$' }
+      example:
+        version: 1
+        userId: alice
+        createdAt: '2026-08-02T00:00:00.000Z'
+        signingKey:
+          keyId: k1_ZgX51d8V7N3sV2t5mA8pRA
+          algorithm: ECDSA-secp256k1-SHA3-256
+          publicKey: A8pPj4f9aYg4cwF6HMj8wTGsmxuj4qzG0nhaF7kP8xYw
+        encryptionKey:
+          keyId: k1_mxuj4qzG0nhaF7kP8xYwQ2
+          algorithm: X25519-HKDF-SHA-256-AES-256-GCM
+          publicKey: dBjFTzJ3f2k8mYh7Bq2Y9c3R6u4W1s0nP5vX_LaZe70
+        fingerprint: 'sha3-256:CV5o8V6kvO3fUjFyH4MG9o8F2Lx2mJXxC4Z0v5L1V6s'
+
+    EncryptedMessageEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+        - version
+        - messageId
+        - conversationId
+        - sender
+        - receiver
+        - senderEncryptionKeyId
+        - receiverEncryptionKeyId
+        - senderSigningKeyId
+        - senderPublicKeyFingerprint
+        - hkdfSalt
+        - nonce
+        - ciphertext
+        - sentAt
+      description: |
+        The only message object sent over HTTP or WebSocket and the only one
+        stored. `ciphertext` holds the AES-256-GCM encryption
+        of the JCS-serialized `SignedMessagePayload`, including its
+        authentication tag; the plaintext body and inner signature never appear
+        outside it. The remaining fields are reconstructed by the
+        receiver as AES-GCM associated data. The server validates
+        this schema but cannot and must not verify the inner signature.
+      properties:
+        version: { type: integer, enum: [1] }
+        messageId:
           type: string
-        token:
+          pattern: '^msg_[A-Za-z0-9_-]{26,64}$'
+          description: Client-generated and globally unique; drives idempotency.
+        conversationId: { type: string, pattern: '^conv_[A-Za-z0-9_-]{16,64}$' }
+        sender: { $ref: '#/components/schemas/Username' }
+        receiver: { $ref: '#/components/schemas/Username' }
+        senderEncryptionKeyId: { type: string, pattern: '^k1_[A-Za-z0-9_-]{22}$' }
+        receiverEncryptionKeyId: { type: string, pattern: '^k1_[A-Za-z0-9_-]{22}$' }
+        senderSigningKeyId: { type: string, pattern: '^k1_[A-Za-z0-9_-]{22}$' }
+        senderPublicKeyFingerprint: { type: string, pattern: '^sha3-256:[A-Za-z0-9_-]{43}$' }
+        hkdfSalt:
           type: string
-          description: JWT bearer token
-        profileName:
+          pattern: '^[A-Za-z0-9_-]{43}$'
+          description: Fresh random 32-byte HKDF salt per envelope.
+        nonce:
           type: string
-      required: [username, token, profileName]
-    AuthSuccessResponse:
+          pattern: '^[A-Za-z0-9_-]{16}$'
+          description: Fresh random 12-byte AES-GCM nonce per envelope.
+        ciphertext: { type: string, pattern: '^[A-Za-z0-9_-]+$' }
+        sentAt: { type: string, format: date-time }
+      example:
+        version: 1
+        messageId: msg_01j5w7m6h2x8p4n9q0r1s2t3u4
+        conversationId: conv_7Z4b2qN8pL5mR1xS9vA0cD
+        sender: alice
+        receiver: bob
+        senderEncryptionKeyId: k1_mxuj4qzG0nhaF7kP8xYwQ2
+        receiverEncryptionKeyId: k1_aF4f9aYg4cwF6HMj8wTGsQ
+        senderSigningKeyId: k1_ZgX51d8V7N3sV2t5mA8pRA
+        senderPublicKeyFingerprint: 'sha3-256:CV5o8V6kvO3fUjFyH4MG9o8F2Lx2mJXxC4Z0v5L1V6s'
+        hkdfSalt: d2Y9c3R6u4W1s0nP5vX_LaZe70dBjFTzJ3f2k8mYh7
+        nonce: P5vX_LaZe70dBjFT
+        ciphertext: k8mYh7Bq2Y9c3R6u4W1s0nP5vX_LaZe70dBjFTzJ3f2k8mYh7Bq2Y9c3R6u4W1s0nP5vX
+        sentAt: '2026-08-02T00:00:00.000Z'
+
+    StoredMessage:
       allOf:
-        - $ref: '#/components/schemas/ApiEnvelope'
+        - $ref: '#/components/schemas/EncryptedMessageEnvelope'
         - type: object
+          required: [serverReceivedAt, deliveredAt, deliveryState]
+          description: An envelope plus the server-owned delivery fields.
           properties:
-            status:
+            serverReceivedAt:
               type: string
-              enum: [success]
-            data:
-              $ref: '#/components/schemas/AuthData'
-          required: [status, data]
-    ProfileRequest:
-      type: object
-      properties:
-        profileName:
-          type: string
-        imageURL:
-          type: string
-          format: uri
-      required: [profileName]
-    UserDocument:
-      type: object
-      description: User document returned by profile update (as saved by MongoDB)
-      properties:
-        _id:
-          type: string
-        username:
-          type: string
-        password:
-          type: string
-          description: Hashed password
-        profileName:
-          type: string
-        imageURL:
-          type: string
-          format: uri
-        publicKey:
-          type: string
-        __v:
-          type: integer
-      required: [username, password, profileName, imageURL, publicKey]
-    ProfileSuccessResponse:
-      allOf:
-        - $ref: '#/components/schemas/ApiEnvelope'
-        - type: object
-          properties:
-            status:
+              format: date-time
+              description: Assigned exactly once at first persist; primary ordering key.
+            deliveredAt: { type: string, format: date-time, nullable: true }
+            deliveryState:
               type: string
-              enum: [success]
-            data:
-              $ref: '#/components/schemas/UserDocument'
-          required: [status, data]
+              enum: [stored, delivered, expired]
+              description: Server-owned; clients cannot supply it as authoritative state.
+
     PublicUser:
       type: object
-      description: Public user object (without sensitive fields)
+      required: [username, displayName, avatarUrl, publicKeyBundle]
+      description: |
+        The only user shape public endpoints return. Password hashes, refresh
+        material, private keys, encrypted vaults, and database identifiers are
+        excluded.
       properties:
-        username:
-          type: string
-        profileName:
-          type: string
-        imageURL:
+        username: { $ref: '#/components/schemas/Username' }
+        displayName: { type: string, minLength: 1, maxLength: 80 }
+        avatarUrl:
           type: string
           format: uri
-        publicKey:
-          type: string
-      required: [username, profileName, imageURL, publicKey]
-    UsersData:
+          nullable: true
+          description: Absolute `https://` URL up to 2048 characters, or null for the default avatar.
+        publicKeyBundle: { $ref: '#/components/schemas/PublicKeyBundle' }
+        identityVersion: { type: integer, minimum: 1 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    SessionData:
       type: object
+      required: [user, accessToken]
       properties:
-        users:
-          type: array
-          items:
-            $ref: '#/components/schemas/PublicUser'
-      required: [users]
-    UsersSuccessResponse:
-      allOf:
-        - $ref: '#/components/schemas/ApiEnvelope'
-        - type: object
-          properties:
-            status:
-              type: string
-              enum: [success]
-            data:
-              $ref: '#/components/schemas/UsersData'
-          required: [status, data]
+        user: { $ref: '#/components/schemas/PublicUser' }
+        accessToken:
+          type: string
+          description: Bearer JWT valid for 15 minutes.
+
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password, displayName, publicKeyBundle]
+      properties:
+        username: { $ref: '#/components/schemas/Username' }
+        password: { type: string, minLength: 12, maxLength: 128 }
+        displayName: { type: string, minLength: 1, maxLength: 80 }
+        avatarUrl: { type: string, format: uri, nullable: true }
+        publicKeyBundle: { $ref: '#/components/schemas/PublicKeyBundle' }
+
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username: { $ref: '#/components/schemas/Username' }
+        password: { type: string, minLength: 12, maxLength: 128 }
+
+    ProfilePatchRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        displayName: { type: string, minLength: 1, maxLength: 80 }
+        avatarUrl: { type: string, format: uri, nullable: true }
+
+    IdentityResetRequest:
+      type: object
+      additionalProperties: false
+      required: [password, publicKeyBundle]
+      properties:
+        password:
+          type: string
+          minLength: 12
+          maxLength: 128
+          description: Current account password, re-verified server-side.
+        publicKeyBundle: { $ref: '#/components/schemas/PublicKeyBundle' }
+
+    IdentityResetData:
+      type: object
+      required: [identityEpoch, publicKeyBundle, updatedAt]
+      properties:
+        identityEpoch:
+          type: integer
+          minimum: 1
+          description: Incremented on every successful reset.
+        publicKeyBundle: { $ref: '#/components/schemas/PublicKeyBundle' }
+        updatedAt: { type: string, format: date-time }
