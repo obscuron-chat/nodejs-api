@@ -20,7 +20,7 @@ const DEFAULT_HISTORY_LIMIT = 50;
 const MAX_HISTORY_LIMIT = 100;
 const HIGH_WATER_CURSOR_DOMAIN = 'obscuron:ws:high_water_cursor:v1';
 
-function createRealtimeService({ config, repository, authService, clock = () => new Date(), setTimer = setTimeout, clearTimer = clearTimeout }) {
+function createRealtimeService({ config, repository, authService, audit = () => null, clock = () => new Date(), setTimer = setTimeout, clearTimer = clearTimeout }) {
   const socketsByUser = new Map();
   const messageLimiter = new WindowRateLimiter({
     limit: config.wsMessagesPerMinute,
@@ -41,11 +41,13 @@ function createRealtimeService({ config, repository, authService, clock = () => 
     }));
   }
 
-  function handleConnection(ws) {
+  function handleConnection(ws, req) {
     const state = {
       authenticated: false,
       authenticating: false,
       username: null,
+      origin: req?.headers?.origin || null,
+      sourceIp: req?.socket?.remoteAddress || null,
       connectionId: `conn_${crypto.randomBytes(16).toString('base64url')}`,
       badFrames: 0,
       misses: 0,
@@ -54,23 +56,35 @@ function createRealtimeService({ config, repository, authService, clock = () => 
       heartbeatTimer: null
     };
 
-    state.authTimer = armTimer(setTimer, () => close(ws, CLOSE.TIMEOUT), AUTH_TIMEOUT_MS);
+    state.authTimer = armTimer(setTimer, () => {
+      auditSocket(state, 'ws.connect.rejected', CLOSE.TIMEOUT.reason);
+      close(ws, CLOSE.TIMEOUT);
+    }, AUTH_TIMEOUT_MS);
 
     ws.on('message', async (data, isBinary) => {
-      if (isBinary) return badRequest(ws, state, null, true);
+      if (isBinary) return badRequest(ws, state, null, true, 'binary_frame');
       const frame = parseFrame(data);
-      if (!frame) return badRequest(ws, state, null, true);
+      if (!frame) return badRequest(ws, state, null, true, 'malformed_json');
       const requestId = typeof frame.requestId === 'string' ? frame.requestId : null;
-      if (!state.authenticated && frame.type !== 'authenticate') return close(ws, CLOSE.AUTH_REQUIRED);
-      if (!CLIENT_EVENTS.has(frame.type)) return badRequest(ws, state, requestId, false);
+      if (!state.authenticated && frame.type !== 'authenticate') {
+        auditSocket(state, 'ws.connect.rejected', CLOSE.AUTH_REQUIRED.reason);
+        return close(ws, CLOSE.AUTH_REQUIRED);
+      }
+      if (!CLIENT_EVENTS.has(frame.type)) return badRequest(ws, state, requestId, false, 'unsupported_event');
 
       try {
         if (frame.type === 'authenticate') return await authenticate(ws, state, frame);
         if (frame.type === 'message.send') return await sendMessage(ws, state, frame);
         return await markDelivered(ws, state, frame);
       } catch (error) {
-        if (error instanceof WsCloseError) return close(ws, error.close);
-        if (error instanceof PublicError) return close(ws, CLOSE.BAD_REQUEST);
+        if (error instanceof WsCloseError) {
+          auditSocket(state, error.auditEvent || (state.authenticated ? 'ws.message.rejected' : 'ws.connect.rejected'), error.close.reason);
+          return close(ws, error.close);
+        }
+        if (error instanceof PublicError) {
+          auditSocket(state, 'ws.message.rejected', 'validation_failed');
+          return close(ws, CLOSE.BAD_REQUEST);
+        }
         return close(ws, CLOSE.INTERNAL);
       }
     });
@@ -111,7 +125,10 @@ function createRealtimeService({ config, repository, authService, clock = () => 
     const username = normalizeUsername(decoded.username);
     const user = username ? await repository.findUserByUsername(username, { includePasswordHash: false }) : null;
     if (!user) throw new WsCloseError(CLOSE.INVALID_TOKEN);
-    if (socketCount(username) >= config.wsMaxConnectionsPerUser) throw new WsCloseError(CLOSE.RATE_LIMITED);
+    if (socketCount(username) >= config.wsMaxConnectionsPerUser) {
+      state.username = user.username;
+      throw new WsCloseError(CLOSE.RATE_LIMITED, 'ws.connection_limit');
+    }
 
     state.authenticated = true;
     state.authenticating = false;
@@ -121,6 +138,7 @@ function createRealtimeService({ config, repository, authService, clock = () => 
     const tokenExpiresAt = new Date(decoded.exp * 1000);
     state.expiryTimer = armTimer(setTimer, () => close(ws, CLOSE.EXPIRED), Math.max(0, tokenExpiresAt.getTime() - clock().getTime()));
     state.heartbeatTimer = armTimer(setTimer, () => heartbeat(ws, state), config.wsHeartbeatIntervalSeconds * 1000);
+    auditSocket(state, 'ws.connect.accepted', 'authenticated');
 
     let replayOptions;
     try {
@@ -162,9 +180,9 @@ function createRealtimeService({ config, repository, authService, clock = () => 
     if (validation.details.length > 0) throw new WsCloseError(CLOSE.BAD_REQUEST);
     const sender = await repository.findUserByUsername(state.username, { includePasswordHash: false });
     const receiver = await repository.findUserByUsername(frame.receiver, { includePasswordHash: false });
-    if (!sender || !receiver) throw new WsCloseError(CLOSE.FORBIDDEN);
-    if (!messageLimiter.record(state.username)) throw new WsCloseError(CLOSE.RATE_LIMITED);
-    if (!messageContractMatches({ envelope, frame, sender, receiver })) throw new WsCloseError(CLOSE.FORBIDDEN);
+    if (!sender || !receiver) throw new WsCloseError(CLOSE.FORBIDDEN, 'ws.message.rejected');
+    if (!messageLimiter.record(state.username)) throw new WsCloseError(CLOSE.RATE_LIMITED, 'ws.rate_limited');
+    if (!messageContractMatches({ envelope, frame, sender, receiver })) throw new WsCloseError(CLOSE.FORBIDDEN, 'ws.message.rejected');
 
     const now = clock();
     const result = await repository.storeEncryptedMessage(envelope, {
@@ -225,6 +243,23 @@ function createRealtimeService({ config, repository, authService, clock = () => 
     return (socketsByUser.get(username) || new Set()).size;
   }
 
+  function auditSocket(state, event, reason) {
+    audit(event, {
+      connectionId: state.connectionId,
+      username: state.username,
+      sourceIp: state.sourceIp,
+      origin: state.origin,
+      reason
+    });
+  }
+
+  function badRequest(ws, state, requestId, closeNow, reason) {
+    state.badFrames += 1;
+    auditSocket(state, state.authenticated ? 'ws.message.rejected' : 'ws.connect.rejected', reason);
+    if (!closeNow && state.badFrames === 1) return sendError(ws, requestId, 'VALIDATION_FAILED');
+    return close(ws, CLOSE.BAD_REQUEST);
+  }
+
   return { disconnectUser, handleConnection, registerRoutes, socketsByUser };
 }
 
@@ -247,9 +282,10 @@ class WindowRateLimiter {
 }
 
 class WsCloseError extends Error {
-  constructor(closeCode) {
+  constructor(closeCode, auditEvent = null) {
     super(closeCode.reason);
     this.close = closeCode;
+    this.auditEvent = auditEvent;
   }
 }
 
@@ -403,12 +439,6 @@ function validatePeer(value) {
 function cursorOutsideReplayRetention(cursor, now, config) {
   const retentionStart = new Date(now.getTime() - config.messageRetentionDays * 24 * 60 * 60 * 1000);
   return cursor.serverReceivedAt < retentionStart || cursor.serverReceivedAt > now;
-}
-
-function badRequest(ws, state, requestId, closeNow) {
-  state.badFrames += 1;
-  if (!closeNow && state.badFrames === 1) return sendError(ws, requestId, 'VALIDATION_FAILED');
-  return close(ws, CLOSE.BAD_REQUEST);
 }
 
 function invalidKeys(value, allowed) {

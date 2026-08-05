@@ -32,6 +32,7 @@ function makeHarness(overrides = {}) {
       mongo: fakeMongo(),
       authService,
       repository,
+      audit: overrides.audit,
       dbState: { indexesReady: true },
       realtimeOptions: overrides.realtimeOptions || {}
     }),
@@ -219,6 +220,44 @@ function expectUpgradeRejected(server, url, origin = ORIGIN) {
   assert.equal(socket.destroyed, true);
   assert.match(socket.writes.join(''), /^HTTP\/1\.1 403 Forbidden/);
 }
+
+// The socket surface emits its required connection and message events.
+test('socket lifecycle emits connect, rejection, connection-limit, and message-rejected audit events', async () => {
+  const records = [];
+  const { server, authService, repository } = makeHarness({
+    audit: (event, fields) => records.push({ event, ...fields }),
+    config: { wsMaxConnectionsPerUser: 1 }
+  });
+  await seedAliceBob(repository);
+  await withHttpServer(server, async (baseUrl) => {
+    const wsBase = baseUrl.replace('http:', 'ws:');
+    const token = authService.issueAccessToken(await repository.findUserByUsername('alice'));
+    expectUpgradeRejected(server, '/ws', 'http://evil.example');
+
+    const first = await openSocket(`${wsBase}/ws`);
+    await authenticate(first, token);
+
+    const second = await openSocket(`${wsBase}/ws`);
+    const secondClosed = closeInfo(second);
+    second.send(JSON.stringify({ type: 'authenticate', requestId: 'req_two', accessToken: token }));
+    assert.deepEqual(await secondClosed, CLOSE.RATE_LIMITED);
+
+    const rejectedClose = closeInfo(first);
+    sendMessageFrame(first, 'req_send', envelope({ receiver: 'carol' }));
+    assert.deepEqual(await rejectedClose, CLOSE.FORBIDDEN);
+
+    assert.deepEqual(records.map((record) => record.event), [
+      'ws.connect.rejected',
+      'ws.connect.accepted',
+      'ws.connection_limit',
+      'ws.message.rejected'
+    ]);
+    assert.equal(records[0].origin, 'http://evil.example');
+    assert.equal(records[1].username, 'alice');
+    assert.match(records[1].connectionId, /^conn_/);
+    assert.equal(records[2].username, 'alice');
+  });
+});
 
 test('upgrade accepts exact /ws origin only and rejects room paths, queries, and unlisted origins', async () => {
   const { server, authService, repository } = makeHarness();

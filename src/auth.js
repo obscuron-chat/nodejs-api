@@ -246,7 +246,7 @@ function createAuthService({ config, repository, clock = () => new Date(), rando
     if (refreshUserAttempts.recordAttempt(existing.usernameNormalized)) throw new PublicError(429, 'RATE_LIMITED');
     if (existing.revokedAt || existing.replacedByTokenHash || new Date(existing.expiresAt) <= now) {
       await repository.revokeRefreshFamily(existing.tokenFamilyId, now);
-      throw new PublicError(401, 'UNAUTHENTICATED');
+      throw reuseDetected(existing.usernameNormalized);
     }
     const user = await repository.findUserByUsername(existing.usernameNormalized, { includePasswordHash: false });
     if (!user) throw new PublicError(401, 'UNAUTHENTICATED');
@@ -268,7 +268,7 @@ function createAuthService({ config, repository, clock = () => new Date(), rando
     const rotated = await repository.rotateRefreshSession({ tokenHash, replacedByTokenHash: nextHash, nextSession, now });
     if (!rotated) {
       await repository.revokeRefreshFamily(existing.tokenFamilyId, now);
-      throw new PublicError(401, 'UNAUTHENTICATED');
+      throw reuseDetected(existing.usernameNormalized);
     }
     return { user, accessToken: issueAccessToken(user), refreshToken: nextToken };
   }
@@ -347,6 +347,15 @@ function createAuthService({ config, repository, clock = () => new Date(), rando
     listUsers,
     verifyAccessToken
   };
+}
+
+// Tags the generic 401 so the route layer can emit auth.refresh.reuse_detected
+// without widening the client-visible error.
+function reuseDetected(username) {
+  const error = new PublicError(401, 'UNAUTHENTICATED');
+  error.auditEvent = 'auth.refresh.reuse_detected';
+  error.auditUsername = username;
+  return error;
 }
 
 function parseUserListOptions(query) {

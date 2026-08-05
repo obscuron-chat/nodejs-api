@@ -32,7 +32,7 @@ function requireJsonBody(req, res, next) {
   return next();
 }
 
-function createApp({ config, mongo, wsState, dbState = { indexesReady: true }, authService = null, realtimeService = null }) {
+function createApp({ config, mongo, wsState, dbState = { indexesReady: true }, authService = null, realtimeService = null, audit = () => null }) {
   const app = express();
   app.disable('x-powered-by');
   app.use(requestIdMiddleware);
@@ -49,7 +49,7 @@ function createApp({ config, mongo, wsState, dbState = { indexesReady: true }, a
     return failure(res, 503, 'INTERNAL_ERROR');
   });
   app.get('/', (req, res) => success(res, 200, { service: 'obscuron-api' }));
-  if (authService) registerAuthRoutes(app, { authService, config, realtimeService });
+  if (authService) registerAuthRoutes(app, { authService, config, realtimeService, audit });
   if (realtimeService) realtimeService.registerRoutes(app);
 
   app.use((req, res) => failure(res, 404, 'NOT_FOUND'));
@@ -62,10 +62,10 @@ function createApp({ config, mongo, wsState, dbState = { indexesReady: true }, a
   return app;
 }
 
-function createServer({ config, mongo, dbState = { indexesReady: true }, authService = null, repository = null, realtimeOptions = {} }) {
+function createServer({ config, mongo, dbState = { indexesReady: true }, authService = null, repository = null, audit = () => null, realtimeOptions = {} }) {
   const wsState = { acceptingUpgrades: true };
-  const realtimeService = authService && repository ? createRealtimeService({ config, repository, authService, ...realtimeOptions }) : null;
-  const app = createApp({ config, mongo, wsState, dbState, authService, realtimeService });
+  const realtimeService = authService && repository ? createRealtimeService({ config, repository, authService, audit, ...realtimeOptions }) : null;
+  const app = createApp({ config, mongo, wsState, dbState, authService, realtimeService, audit });
   const server = http.createServer(app);
   const wss = new WebSocket.Server({
     noServer: true,
@@ -78,6 +78,11 @@ function createServer({ config, mongo, dbState = { indexesReady: true }, authSer
   server.on('upgrade', (req, socket, head) => {
     const origin = req.headers.origin;
     if (req.url !== '/ws' || !origin || !allowedWsOrigins.has(origin) || !wsState.acceptingUpgrades) {
+      audit('ws.connect.rejected', {
+        origin: origin || null,
+        sourceIp: socket.remoteAddress || null,
+        reason: wsState.acceptingUpgrades ? 'origin_or_path_not_allowed' : 'server_draining'
+      });
       socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
       socket.destroy();
       return;
