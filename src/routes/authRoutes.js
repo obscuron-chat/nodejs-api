@@ -48,7 +48,7 @@ function registerAuthRoutes(app, { authService, config, realtimeService = null }
 
   app.post('/identity/reset', asyncHandler(async (req, res) => {
     const user = await authService.resetIdentity(req.headers.authorization, req.body);
-    return success(res, 200, { user: publicUser(user) });
+    return success(res, 200, identityEpochResult(user));
   }));
 }
 
@@ -60,6 +60,16 @@ function asyncHandler(handler) {
       if (error instanceof PublicError) return failure(res, error.status, error.code, { details: error.details });
       return next(error);
     }
+  };
+}
+
+// Reset reports the new identity epoch and published bundle, not a whole profile.
+function identityEpochResult(user) {
+  const updatedAt = user.identityResetAt || user.updatedAt;
+  return {
+    identityEpoch: user.identityVersion,
+    publicKeyBundle: user.publicKeyBundle,
+    updatedAt: updatedAt instanceof Date ? updatedAt.toISOString() : updatedAt
   };
 }
 

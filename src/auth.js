@@ -172,7 +172,6 @@ function createAuthService({ config, repository, clock = () => new Date(), rando
     details = details.concat(usernameResult.details, displayNameResult.details, avatarResult.details);
     if (requirePassword) details = details.concat(validatePassword(body.password).details);
     if (requireDisplayName && body.displayName === undefined) details.push({ field: 'displayName', reason: 'Is required.' });
-    if (body.currentPassword !== undefined) details = details.concat(validatePassword(body.currentPassword, 'currentPassword').details);
     if (requirePublicKeyBundle) {
       details = details.concat(validatePublicKeyBundle(body.publicKeyBundle).details);
       if (usernameResult.value && body.publicKeyBundle?.userId !== usernameResult.value) {
@@ -185,7 +184,6 @@ function createAuthService({ config, repository, clock = () => new Date(), rando
     return {
       username: usernameResult.value,
       password: body.password,
-      currentPassword: body.currentPassword,
       displayName: displayNameResult.value,
       avatarUrl: avatarResult.value,
       publicKeyBundle: body.publicKeyBundle
@@ -325,13 +323,13 @@ function createAuthService({ config, repository, clock = () => new Date(), rando
 
   async function resetIdentity(authorization, body) {
     const user = await currentUser(authorization);
-    let details = validateExactObject(body, ['currentPassword', 'publicKeyBundle']);
+    let details = validateExactObject(body, ['password', 'publicKeyBundle']);
     if (!body || typeof body !== 'object' || Array.isArray(body)) throw new PublicError(400, 'VALIDATION_FAILED', details);
-    details = details.concat(validatePassword(body.currentPassword, 'currentPassword').details, validatePublicKeyBundle(body.publicKeyBundle).details);
+    details = details.concat(validatePassword(body.password).details, validatePublicKeyBundle(body.publicKeyBundle).details);
     if (body.publicKeyBundle?.userId !== user.username) details.push({ field: 'publicKeyBundle.userId', reason: 'Must match canonical username.' });
     if (details.length > 0) throw new PublicError(400, 'VALIDATION_FAILED', details);
     const withHash = await repository.findUserByUsername(user.username, { includePasswordHash: true });
-    const passwordOk = withHash ? await bcrypt.compare(body.currentPassword, withHash.passwordHash) : false;
+    const passwordOk = withHash ? await bcrypt.compare(body.password, withHash.passwordHash) : false;
     if (!passwordOk) throw new PublicError(401, 'UNAUTHENTICATED');
     return repository.resetIdentity(user.username, body.publicKeyBundle, clock());
   }

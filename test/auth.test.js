@@ -282,19 +282,27 @@ test('identity reset verifies password, increments identity version, and retires
     const alice = await fetch(`${baseUrl}/auth/register`, jsonRequest('POST', registerBody()));
     const token = (await alice.json()).data.accessToken;
     const wrong = await fetch(`${baseUrl}/identity/reset`, jsonRequest('POST', {
-      currentPassword: 'wrong password!',
+      password: 'wrong password!',
       publicKeyBundle: resetBundle()
     }, { Authorization: `Bearer ${token}` }));
     assert.equal(wrong.status, 401);
 
-    const reset = await fetch(`${baseUrl}/identity/reset`, jsonRequest('POST', {
+    const legacyField = await fetch(`${baseUrl}/identity/reset`, jsonRequest('POST', {
       currentPassword: 'correct horse battery staple',
+      publicKeyBundle: resetBundle()
+    }, { Authorization: `Bearer ${token}` }));
+    assert.equal(legacyField.status, 400);
+
+    const reset = await fetch(`${baseUrl}/identity/reset`, jsonRequest('POST', {
+      password: 'correct horse battery staple',
       publicKeyBundle: resetBundle()
     }, { Authorization: `Bearer ${token}` }));
     assert.equal(reset.status, 200);
     const body = await reset.json();
-    assert.equal(body.data.user.identityVersion, 2);
-    assert.equal(body.data.user.publicKeyBundle.fingerprint, resetBundle().fingerprint);
+    assert.deepEqual(Object.keys(body.data).sort(), ['identityEpoch', 'publicKeyBundle', 'updatedAt']);
+    assert.equal(body.data.identityEpoch, 2);
+    assert.equal(body.data.publicKeyBundle.fingerprint, resetBundle().fingerprint);
+    assert.equal(new Date(body.data.updatedAt).toISOString(), body.data.updatedAt);
     const stored = repository.state.users.get('alice');
     assert.equal(stored.retiredPublicKeyBundles.length, 1);
     assert.equal(stored.retiredPublicKeyBundles[0].fingerprint, vectors.publicKeyBundle.fingerprint);
@@ -316,11 +324,11 @@ test('concurrent identity reset appends the active bundle and increments each wi
     };
     const [first, second] = await Promise.all([
       fetch(`${baseUrl}/identity/reset`, jsonRequest('POST', {
-        currentPassword: 'correct horse battery staple',
+        password: 'correct horse battery staple',
         publicKeyBundle: bundleA
       }, { Authorization: `Bearer ${token}` })),
       fetch(`${baseUrl}/identity/reset`, jsonRequest('POST', {
-        currentPassword: 'correct horse battery staple',
+        password: 'correct horse battery staple',
         publicKeyBundle: bundleB
       }, { Authorization: `Bearer ${token}` }))
     ]);
